@@ -563,9 +563,19 @@ const TASK_COLORS = ['#ff5e8a', '#ff9f43', '#e8b100', '#2ecc8f', '#22c1c3', '#4d
 const $ = id => document.getElementById(id);
 
 // ---------- storage ----------
+const isDayKey = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
 function normalize(s) {
   if (!s || !s.days) s = { days: {} };
   if (!s.board) s.board = { lists: [], labels: [], cards: {} };
+  // Versions before the board stored synced 'board:meta' / 'card:<id>' rows as if they were days.
+  // Move them to the board (if it lacks them) and keep only real dates in `days`.
+  for (const k of Object.keys(s.days)) {
+    if (isDayKey(k)) continue;
+    const v = s.days[k];
+    if (k === 'board:meta' && v && !s.board.lists.length) { s.board.lists = v.lists || []; s.board.labels = v.labels || []; }
+    if (k.startsWith('card:') && v && !s.board.cards[k.slice(5)]) s.board.cards[k.slice(5)] = v;
+    delete s.days[k];
+  }
   return s;
 }
 function load() {
@@ -896,7 +906,7 @@ function renderSearch() {
   if (!q || !searchOpen) return;
   const hits = [];
   Object.values(state.board.cards).forEach(c => {
-    if ((c.title + '\n' + c.desc).toLowerCase().includes(q)) {
+    if (((c.title || '') + '\n' + (c.desc || '')).toLowerCase().includes(q)) {
       const list = state.board.lists.find(l => l.id === c.listId);
       hits.push({ card: c.id, label: list ? list.name : '', text: '🗂 ' + c.title, done: c.archived });
     }
@@ -904,8 +914,8 @@ function renderSearch() {
   Object.keys(state.days).sort().reverse().forEach(k => {
     const day = state.days[k];
     if (day.note && day.note.toLowerCase().includes(q)) hits.push({ k, text: '📌 ' + day.note });
-    (day.events || []).forEach(e => { if (e.text.toLowerCase().includes(q)) hits.push({ k, text: `${evOf(e).icon} ${e.text}`, done: e.done }); });
-    day.tasks.forEach(t => { if (t.text.toLowerCase().includes(q)) hits.push({ k, text: t.text, done: t.done }); });
+    (day.events || []).forEach(e => { if ((e.text || '').toLowerCase().includes(q)) hits.push({ k, text: `${evOf(e).icon} ${e.text}`, done: e.done }); });
+    (day.tasks || []).forEach(t => { if ((t.text || '').toLowerCase().includes(q)) hits.push({ k, text: t.text, done: t.done }); });
   });
   const ul = $('searchList');
   $('searchTitle').textContent = hits.length ? `搜尋結果（${hits.length}）` : '搜尋結果';
@@ -1439,6 +1449,7 @@ function setRow(k, v) {
   const b = state.board;
   if (k === 'board:meta') { b.lists = v ? v.lists : []; b.labels = v ? v.labels : []; }
   else if (k.startsWith('card:')) { const id = k.slice(5); if (v) b.cards[id] = v; else delete b.cards[id]; }
+  else if (!isDayKey(k)) return;   // unknown row type from a newer version: leave it alone
   else if (v) state.days[k] = v;
   else delete state.days[k];
 }
