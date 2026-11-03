@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>工作紀錄</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#7b5cff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -236,6 +239,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .sync[data-s="syncing"]::before { animation: twinkle .8s ease-in-out infinite; }
 .sync[data-s="error"] { --sync-c: #ff5e5e; color: var(--danger); }
 .sync[data-s="login"] { --sync-c: #ff9f43; }
+.sync[data-s="offline"] { --sync-c: #9590a8; }
 .auth {
   position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
   background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(6px);
@@ -998,7 +1002,7 @@ function setSync(s) {
   const b = $('syncBtn');
   b.hidden = false;
   b.dataset.s = s;
-  b.textContent = { ok: '已同步', syncing: '同步中…', error: '同步失敗，稍後重試', login: '未登入 · 只存在本機' }[s];
+  b.textContent = { ok: '已同步', syncing: '同步中…', error: '同步失敗，稍後重試', login: '未登入 · 只存在本機', offline: '離線中 · 連線後自動同步' }[s];
   b.title = cloud.user ? `已登入：${cloud.user.email}` : '點此登入以同步到其他裝置';
 }
 
@@ -1041,6 +1045,7 @@ async function push() {
 function syncNow(withPull) {
   cloud.chain = cloud.chain.then(async () => {
     if (!cloud.user) return;
+    if (!navigator.onLine) { setSync('offline'); return; }   // edits stay local; synced on 'online'
     setSync('syncing');
     try {
       if (withPull) await pull();
@@ -1048,7 +1053,7 @@ function syncNow(withPull) {
       setSync('ok');
     } catch (e) {
       console.error('sync failed', e);
-      setSync('error');
+      setSync(navigator.onLine ? 'error' : 'offline');
     }
   });
   return cloud.chain;
@@ -1128,6 +1133,8 @@ $('authForm').onsubmit = async e => {
 };
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cloud.user) syncNow(true); });
 window.addEventListener('online', () => { if (cloud.user) syncNow(true); });
+window.addEventListener('offline', () => { if (cloud.user) setSync('offline'); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 // ---------- christmas ----------
 try { if (localStorage.getItem(KEY + '.xmas') === 'off') document.body.classList.add('no-xmas'); } catch (e) {}
