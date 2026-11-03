@@ -1,0 +1,4 @@
+# work records contain client / colleague info — never publish
+*.json
+!package.json
+.claude/
