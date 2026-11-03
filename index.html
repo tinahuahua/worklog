@@ -29,7 +29,10 @@
   --glow-b: rgba(90,160,255,.20);
   --glow-c: rgba(255,200,80,.20);
   --rainbow: linear-gradient(90deg, #ff5e8a, #ff9f43, #f7c548, #2ecc8f, #4d9bff, #a66bff);
+  color-scheme: light dark;
 }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #14121d; --panel: #1e1b2a; --panel-2: #2a2639; --text: #efedf5; --muted: #9590a8;
@@ -228,6 +231,107 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .mini-item .d.overdue { color: var(--danger); font-weight: 700; }
 #upcomingSection h3 { --dot: #ff5e8a; }
 
+/* ---------- FSD kanban board ---------- */
+.board-wrap { margin-top: 24px; }
+.board-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.board-head h2 { margin: 0; font-size: 20px; }
+.board-head .sub { color: var(--muted); font-size: 13px; }
+.board-head .spacer { flex: 1; }
+.board-head label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
+.col {
+  flex: 0 0 272px; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line);
+  border-radius: 14px; padding: 10px; display: flex; flex-direction: column; max-height: 78vh;
+}
+.col-head { display: flex; align-items: center; gap: 4px; padding: 2px 2px 8px 4px; font-weight: 700; font-size: 14px; }
+.col-head .name { flex: 1; min-width: 0; word-break: break-word; cursor: text; }
+.col-head .n { font-size: 12px; color: var(--muted); font-weight: 500; background: var(--panel-2); border-radius: 999px; padding: 0 8px; }
+.col-head .icon-btn { width: 24px; height: 24px; font-size: 13px; opacity: 0; }
+.col:hover .col-head .icon-btn { opacity: 1; }
+@media (hover: none) { .col-head .icon-btn { opacity: 1; } }
+.col-head input { flex: 1; min-width: 0; font-weight: 700; padding: 2px 6px; border: 1px solid var(--accent); border-radius: 6px; background: var(--panel); outline: none; }
+.col-cards { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 12px; padding: 2px; border-radius: 10px; }
+.col.drop-target .col-cards { background: var(--accent-soft); }
+.drop-line { height: 4px; background: var(--accent); border-radius: 2px; flex: none; }
+.kcard {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; overflow: hidden; flex: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+.kcard:hover { border-color: var(--accent); }
+.kcard.dragging { opacity: .4; }
+.kcard.archived { opacity: .5; }
+.kcard .cover { height: 24px; }
+.kcard .body { padding: 8px 10px; }
+.kcard .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.kcard .title { font-size: 14px; word-break: break-word; }
+.kcard .badges { display: flex; gap: 10px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.kcard .badges:empty { display: none; }
+.kcard .badges .done { color: var(--done); font-weight: 700; }
+.lbl {
+  font-size: 11px; font-weight: 700; color: #1d2125; border-radius: 4px; padding: 0 6px; min-width: 36px;
+  height: 18px; line-height: 18px; border: none; display: inline-block; text-align: center;
+}
+.add-card { margin-top: 6px; border: none; background: none; color: var(--muted); text-align: left; padding: 6px 8px; border-radius: 8px; font-size: 14px; }
+.add-card:hover { background: var(--panel-2); color: var(--text); }
+.new-card { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
+.new-card textarea, .new-col input {
+  width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--accent); background: var(--panel);
+  font: inherit; font-size: 14px; color: inherit; outline: none; resize: none;
+}
+.add-col { flex: 0 0 272px; border: 2px dashed var(--line); background: transparent; border-radius: 14px; padding: 12px; color: var(--muted); font-size: 14px; }
+.add-col:hover { border-color: var(--accent); color: var(--text); }
+
+/* card detail */
+.modal {
+  position: fixed; inset: 0; z-index: 15; background: rgba(10,8,20,.45); display: flex; justify-content: center;
+  align-items: flex-start; overflow-y: auto; padding: 48px 16px;
+}
+.modal[hidden] { display: none; }
+.mbox { position: relative; width: 100%; max-width: 720px; background: var(--panel); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.mbox > .cover { height: 64px; }
+.m-close { position: absolute; top: 10px; right: 10px; background: color-mix(in srgb, var(--panel) 80%, transparent); }
+.mbody { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 20px; }
+.m-title {
+  font: inherit; font-size: 20px; font-weight: 700; color: inherit; width: calc(100% - 36px); padding: 4px 6px;
+  border: 1px solid transparent; border-radius: 8px; background: transparent; outline: none;
+}
+.m-title:focus { border-color: var(--accent); background: var(--bg); }
+.m-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.m-row select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
+.arch-tag { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 1px 8px; font-weight: 700; }
+.m-sec h4 { margin: 0 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.m-sec h4 .muted { color: var(--muted); font-weight: 500; font-size: 13px; }
+.lbl-pick, .cover-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+.lbl-pick .lbl { cursor: pointer; height: 26px; line-height: 26px; min-width: 48px; font-size: 12px; }
+.lbl-pick .lbl.off { opacity: .3; }
+.sw { width: 32px; height: 22px; border-radius: 6px; border: 2px solid transparent; font-size: 11px; color: var(--muted); }
+.sw.on { border-color: var(--text); }
+.desc-view { font-size: 14px; line-height: 1.75; word-break: break-word; padding: 10px 12px; background: var(--bg); border-radius: 10px; cursor: text; min-height: 48px; }
+.desc-view a, .comment a { color: var(--accent); }
+.desc-view del, .comment del { color: var(--muted); }
+.placeholder { color: var(--muted); }
+.m-ta {
+  width: 100%; min-height: 180px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--accent);
+  background: var(--bg); font: inherit; font-size: 14px; color: inherit; outline: none; resize: vertical;
+}
+.m-ta.small { min-height: 64px; border-color: var(--line); }
+.m-ta.small:focus { border-color: var(--accent); }
+.chk-bar { height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+.chk-bar i { display: block; height: 100%; background: var(--done); }
+.chk-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 14px; }
+.chk-item span { flex: 1; }
+.chk-item.done span { text-decoration: line-through; color: var(--muted); }
+.chk-item .icon-btn { width: 24px; height: 24px; opacity: 0; }
+.chk-item:hover .icon-btn { opacity: 1; }
+.m-add { display: flex; gap: 8px; margin-top: 6px; align-items: flex-start; }
+.m-add input { flex: 1; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); outline: none; }
+.m-add input:focus { border-color: var(--accent); }
+.comments { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.comment { background: var(--bg); border-radius: 10px; padding: 8px 12px; font-size: 14px; line-height: 1.6; word-break: break-word; }
+.comment .when { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+.m-foot { justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 14px; }
+.btn.danger { color: var(--danger); }
+
 /* cloud sync */
 .sync {
   border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 12px 5px 10px;
@@ -423,7 +527,19 @@ body.no-xmas .app { padding-bottom: 64px; }
       <div class="empty-day" id="emptyDay" hidden>這天還沒有紀錄</div>
     </main>
   </div>
+
+  <section class="board-wrap">
+    <div class="board-head">
+      <h2>🗂 FSD 看板</h2>
+      <span class="sub" id="boardStat"></span>
+      <div class="spacer"></div>
+      <label><input type="checkbox" id="showArchived"> <span id="archLabel">顯示封存</span></label>
+    </div>
+    <div class="board" id="board"></div>
+  </section>
 </div>
+
+<div class="modal" id="cardModal" hidden><div class="mbox" id="mbox"></div></div>
 
 <div class="snow" id="snow" aria-hidden="true"></div>
 <div class="xmas" aria-hidden="true">
@@ -516,12 +632,14 @@ const TASK_COLORS = ['#ff5e8a', '#ff9f43', '#e8b100', '#2ecc8f', '#22c1c3', '#4d
 const $ = id => document.getElementById(id);
 
 // ---------- storage ----------
+function normalize(s) {
+  if (!s || !s.days) s = { days: {} };
+  if (!s.board) s.board = { lists: [], labels: [], cards: {} };
+  return s;
+}
 function load() {
-  try {
-    const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && s.days) return s;
-  } catch (e) {}
-  return { days: {} };
+  try { return normalize(JSON.parse(localStorage.getItem(KEY))); } catch (e) {}
+  return normalize(null);
 }
 function writeLocal() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
@@ -642,6 +760,8 @@ function render() {
   renderUpcoming();
   renderBacklog();
   renderSearch();
+  renderBoard();
+  if (openId) renderModal();
 }
 
 function renderCalendar() {
@@ -843,6 +963,12 @@ function renderSearch() {
   $('searchSection').hidden = !q;
   if (!q) return;
   const hits = [];
+  Object.values(state.board.cards).forEach(c => {
+    if ((c.title + '\n' + c.desc).toLowerCase().includes(q)) {
+      const list = state.board.lists.find(l => l.id === c.listId);
+      hits.push({ card: c.id, label: list ? list.name : '', text: '🗂 ' + c.title, done: c.archived });
+    }
+  });
   Object.keys(state.days).sort().reverse().forEach(k => {
     const day = state.days[k];
     if (day.note && day.note.toLowerCase().includes(q)) hits.push({ k, text: '📌 ' + day.note });
@@ -854,8 +980,9 @@ function renderSearch() {
   hits.forEach(h => {
     const li = document.createElement('li');
     li.className = 'mini-item';
-    li.innerHTML = `<span class="d">${shortLabel(h.k)}</span><span class="t ${h.done ? 'done' : ''}">${highlight(h.text, q)}</span>`;
-    li.onclick = () => select(h.k);
+    const d = h.card ? `<span class="d" title="${esc(h.label)}" style="overflow:hidden;text-overflow:ellipsis">${esc(h.label)}</span>` : `<span class="d">${shortLabel(h.k)}</span>`;
+    li.innerHTML = `${d}<span class="t ${h.done ? 'done' : ''}">${highlight(h.text, q)}</span>`;
+    li.onclick = () => h.card ? openCard(h.card) : select(h.k);
     li.style.cursor = 'pointer';
     ul.appendChild(li);
   });
@@ -939,6 +1066,10 @@ $('nextMonth').onclick = () => { viewMonth.setMonth(viewMonth.getMonth() + 1); r
 $('search').addEventListener('input', renderSearch);
 
 document.addEventListener('keydown', e => {
+  if (!$('cardModal').hidden) {
+    if (e.key === 'Escape' && !/TEXTAREA|INPUT/.test(document.activeElement.tagName)) closeCard();
+    return;
+  }
   const tag = document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'ArrowLeft') select(addDays(selected, -1));
@@ -982,7 +1113,7 @@ $('fileInput').onchange = async e => {
     const data = JSON.parse(await f.text());
     if (!data.days) throw new Error();
     if (!confirm('匯入會覆蓋目前所有紀錄，確定嗎？')) return;
-    state = data; commit();
+    state = normalize(data); commit();
     showToast('匯入完成');
   } catch (err) { alert('檔案格式不正確'); }
   e.target.value = '';
@@ -990,10 +1121,362 @@ $('fileInput').onchange = async e => {
 
 try { const th = localStorage.getItem(KEY + '.theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
 
+// ---------- FSD kanban board ----------
+const TRELLO_COLORS = {
+  green: '#4bce97', yellow: '#e2b203', orange: '#faa53d', red: '#f87168', purple: '#9f8fef',
+  blue: '#579dff', sky: '#6cc3e0', lime: '#94c748', pink: '#e774bb', black: '#8590a2',
+};
+const colorOf = c => TRELLO_COLORS[c] || '#8590a2';
+let showArchived = false, dragCard = null, openId = null, editingDesc = false;
+
+const sortedLists = () => [...state.board.lists].sort((a, b) => a.pos - b.pos);
+const cardsOf = listId => Object.values(state.board.cards)
+  .filter(c => c.listId === listId && (showArchived || !c.archived))
+  .sort((a, b) => a.pos - b.pos);
+
+// Trello-style markdown (links, bold, strike, italics, :ok:) → safe HTML
+function md(s) {
+  let h = esc(s.replace(/‌/g, ''));
+  h = h.replace(/\\([^\w\s&])/g, (m, c) => `&#${c.charCodeAt(0)};`);
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)(?:\s+&quot;.*?&quot;)?\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  h = h.replace(/(^|[\s(])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/~~(.+?)~~/g, '<del>$1</del>');
+  h = h.replace(/(^|[\s>])_(.+?)_(?=[\s<]|$)/gm, '$1<em>$2</em>');
+  h = h.replace(/:ok:/g, '✅').replace(/^- /gm, '• ');
+  return h.replace(/\n/g, '<br>');
+}
+const fmtTime = iso => { const d = new Date(iso); return `${keyOf(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+function renderBoard() {
+  const el = $('board'), scroll = el.scrollLeft;
+  el.innerHTML = '';
+  sortedLists().forEach(l => el.appendChild(colEl(l)));
+  const add = document.createElement('button');
+  add.className = 'add-col';
+  add.textContent = '＋ 新增欄位';
+  add.onclick = () => addListForm(add);
+  el.appendChild(add);
+  el.scrollLeft = scroll;
+  const all = Object.values(state.board.cards), arch = all.filter(c => c.archived).length;
+  $('boardStat').textContent = `${all.length - arch} 張卡片`;
+  $('archLabel').textContent = `顯示封存 (${arch})`;
+}
+
+function colEl(l) {
+  const col = document.createElement('div');
+  col.className = 'col';
+  const cards = cardsOf(l.id);
+  col.innerHTML = `
+    <div class="col-head">
+      <span class="name" title="雙擊重新命名">${esc(l.name)}</span>
+      <span class="n">${cards.filter(c => !c.archived).length}</span>
+      <button class="icon-btn" data-a="left" title="往左移">‹</button>
+      <button class="icon-btn" data-a="right" title="往右移">›</button>
+      <button class="icon-btn" data-a="del" title="刪除欄位">✕</button>
+    </div>
+    <div class="col-cards"></div>
+    <button class="add-card">＋ 新增卡片</button>`;
+  const box = col.querySelector('.col-cards');
+  cards.forEach(c => box.appendChild(cardEl(c)));
+
+  const name = col.querySelector('.name');
+  name.ondblclick = () => {
+    const input = document.createElement('input');
+    input.value = l.name;
+    name.replaceWith(input);
+    input.focus(); input.select();
+    const done = ok => { const v = input.value.trim(); if (ok && v && v !== l.name) { l.name = v; save(); } renderBoard(); };
+    input.onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) input.blur(); if (e.key === 'Escape') { input.onblur = null; done(false); } };
+    input.onblur = () => done(true);
+  };
+  col.querySelector('[data-a=left]').onclick = () => shiftList(l, -1);
+  col.querySelector('[data-a=right]').onclick = () => shiftList(l, 1);
+  col.querySelector('[data-a=del]').onclick = () => deleteList(l);
+  col.querySelector('.add-card').onclick = e => addCardForm(e.target, l.id);
+
+  col.addEventListener('dragover', e => {
+    if (!dragCard) return;
+    e.preventDefault();
+    col.classList.add('drop-target');
+    showDropLine(box, dropIndex(box, e.clientY));
+  });
+  col.addEventListener('dragleave', e => { if (!col.contains(e.relatedTarget)) clearDrop(); });
+  col.addEventListener('drop', e => {
+    if (!dragCard) return;
+    e.preventDefault();
+    const idx = dropIndex(box, e.clientY);
+    clearDrop();
+    moveCard(dragCard, l.id, idx);
+  });
+  return col;
+}
+
+function cardEl(c) {
+  const d = document.createElement('div');
+  d.className = 'kcard' + (c.archived ? ' archived' : '');
+  d.draggable = true;
+  d.dataset.id = c.id;
+  const labels = c.labelIds.map(id => state.board.labels.find(x => x.id === id)).filter(Boolean);
+  const items = c.checklists.flatMap(k => k.items), done = items.filter(i => i.done).length;
+  d.innerHTML = `
+    ${c.cover ? `<div class="cover" style="background:${colorOf(c.cover)}"></div>` : ''}
+    <div class="body">
+      ${labels.length ? `<div class="labels">${labels.map(x => `<span class="lbl" style="background:${colorOf(x.color)}">${esc(x.name)}</span>`).join('')}</div>` : ''}
+      <div class="title">${esc(c.title)}</div>
+      <div class="badges">${[
+        c.desc ? '<span title="有描述">📝</span>' : '',
+        c.comments.length ? `<span title="留言">💬 ${c.comments.length}</span>` : '',
+        items.length ? `<span class="${done === items.length ? 'done' : ''}" title="檢查清單">☑ ${done}/${items.length}</span>` : '',
+        c.archived ? '<span>已封存</span>' : '',
+      ].join('')}</div>
+    </div>`;
+  d.onclick = () => openCard(c.id);
+  d.addEventListener('dragstart', e => {
+    dragCard = c.id;
+    d.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', c.id);
+  });
+  d.addEventListener('dragend', () => { dragCard = null; d.classList.remove('dragging'); clearDrop(); });
+  return d;
+}
+
+function dropIndex(box, y) {
+  const cards = [...box.querySelectorAll('.kcard:not(.dragging)')];
+  return cards.filter(el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2 < y; }).length;
+}
+function showDropLine(box, idx) {
+  document.querySelectorAll('.drop-line').forEach(x => x.remove());
+  const line = document.createElement('div');
+  line.className = 'drop-line';
+  const cards = [...box.querySelectorAll('.kcard:not(.dragging)')];
+  box.insertBefore(line, cards[idx] || null);
+}
+function clearDrop() {
+  document.querySelectorAll('.drop-line').forEach(x => x.remove());
+  document.querySelectorAll('.col.drop-target').forEach(x => x.classList.remove('drop-target'));
+}
+
+// position between neighbours, Trello-style, so only the moved card changes
+function posAt(listId, idx, exceptId) {
+  const sib = cardsOf(listId).filter(c => c.id !== exceptId);
+  const prev = sib[idx - 1], next = sib[idx];
+  if (prev && next) return (prev.pos + next.pos) / 2;
+  if (prev) return prev.pos + 65536;
+  if (next) return next.pos / 2;
+  return 65536;
+}
+function moveCard(id, listId, idx) {
+  const c = state.board.cards[id]; if (!c) return;
+  c.pos = posAt(listId, idx, id);
+  c.listId = listId;
+  save(); renderBoard();
+  if (openId === id) renderModal(true);
+}
+function addCard(listId, title) {
+  const id = uid();
+  state.board.cards[id] = {
+    id, listId, pos: posAt(listId, cardsOf(listId).length), title, desc: '',
+    labelIds: [], cover: null, checklists: [], comments: [], archived: false,
+  };
+  save(); renderBoard();
+}
+function addCardForm(btn, listId) {
+  const form = document.createElement('div');
+  form.className = 'new-card';
+  form.innerHTML = `<textarea rows="2" placeholder="輸入卡片標題，按 Enter 新增"></textarea>
+    <div style="display:flex;gap:6px"><button class="btn primary">新增</button><button class="btn" data-x>取消</button></div>`;
+  btn.replaceWith(form);
+  const ta = form.querySelector('textarea');
+  ta.focus();
+  const submit = () => {
+    const v = ta.value.trim();
+    if (!v) return;
+    addCard(listId, v);
+    // keep the form open in the re-rendered column for the next card
+    const again = [...document.querySelectorAll('.col')][sortedLists().findIndex(l => l.id === listId)];
+    if (again) addCardForm(again.querySelector('.add-card'), listId);
+  };
+  ta.onkeydown = e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') renderBoard();
+  };
+  form.querySelector('.primary').onclick = submit;
+  form.querySelector('[data-x]').onclick = () => renderBoard();
+}
+function addListForm(btn) {
+  const form = document.createElement('div');
+  form.className = 'col new-col';
+  form.innerHTML = `<input placeholder="欄位名稱，按 Enter 新增">`;
+  btn.replaceWith(form);
+  const input = form.querySelector('input');
+  input.focus();
+  input.onkeydown = e => {
+    if (e.key === 'Enter' && !e.isComposing && input.value.trim()) {
+      const last = sortedLists().at(-1);
+      state.board.lists.push({ id: uid(), name: input.value.trim(), pos: last ? last.pos + 65536 : 65536 });
+      save(); renderBoard();
+    }
+    if (e.key === 'Escape') renderBoard();
+  };
+  input.onblur = () => setTimeout(renderBoard, 150);
+}
+function shiftList(l, dir) {
+  const lists = sortedLists(), i = lists.indexOf(l), other = lists[i + dir];
+  if (!other) return;
+  [l.pos, other.pos] = [other.pos, l.pos];
+  save(); renderBoard();
+}
+function deleteList(l) {
+  const n = Object.values(state.board.cards).filter(c => c.listId === l.id).length;
+  if (n) { alert(`「${l.name}」裡還有 ${n} 張卡片（含封存），請先移走再刪除欄位。`); return; }
+  if (!confirm(`刪除欄位「${l.name}」？`)) return;
+  state.board.lists = state.board.lists.filter(x => x !== l);
+  save(); renderBoard();
+}
+
+// ---------- card detail ----------
+function openCard(id) { openId = id; editingDesc = false; $('cardModal').hidden = false; renderModal(true); }
+function closeCard() { openId = null; $('cardModal').hidden = true; }
+
+function renderModal(force) {
+  const c = openId && state.board.cards[openId];
+  if (!c) { closeCard(); return; }
+  const box = $('mbox');
+  // don't wipe something the user is typing when a sync refresh comes in
+  if (!force && box.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  const draft = $('newComment') ? $('newComment').value : '';
+  box.innerHTML = `
+    ${c.cover ? `<div class="cover" style="background:${colorOf(c.cover)}"></div>` : ''}
+    <button class="icon-btn m-close" data-a="close" title="關閉 (Esc)">✕</button>
+    <div class="mbody">
+      <div>
+        <input class="m-title" data-a="title" value="${esc(c.title)}">
+        <div class="m-row">在欄位
+          <select data-a="list">${sortedLists().map(l => `<option value="${l.id}" ${l.id === c.listId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
+          ${c.archived ? '<span class="arch-tag">已封存</span>' : ''}
+        </div>
+      </div>
+      <div class="m-sec"><h4>🏷 標籤</h4><div class="lbl-pick">${state.board.labels.map(l =>
+        `<button class="lbl ${c.labelIds.includes(l.id) ? '' : 'off'}" data-a="label" data-id="${l.id}" style="background:${colorOf(l.color)}">${esc(l.name)}</button>`).join('')}</div></div>
+      <div class="m-sec"><h4>🎨 封面顏色</h4><div class="cover-pick">${['', ...Object.keys(TRELLO_COLORS)].map(k =>
+        `<button class="sw ${(c.cover || '') === k ? 'on' : ''}" data-a="cover" data-c="${k}" title="${k || '無'}" style="background:${k ? TRELLO_COLORS[k] : 'var(--panel-2)'}">${k ? '' : '✕'}</button>`).join('')}</div></div>
+      <div class="m-sec"><h4>📝 描述 ${editingDesc ? '' : '<button class="link-btn" data-a="editdesc">編輯</button>'}</h4>
+        ${editingDesc
+          ? `<textarea class="m-ta" id="descInput">${esc(c.desc)}</textarea>
+             <div class="m-row"><button class="btn primary" data-a="savedesc">儲存</button><button class="btn" data-a="canceldesc">取消</button></div>`
+          : `<div class="desc-view" data-a="editdesc">${c.desc ? md(c.desc) : '<span class="placeholder">點此新增描述或紀錄…</span>'}</div>`}
+      </div>
+      ${c.checklists.map(k => {
+        const d = k.items.filter(i => i.done).length;
+        return `<div class="m-sec"><h4>☑ ${esc(k.name)} <span class="muted">${d}/${k.items.length}</span>
+            <button class="link-btn" data-a="delchk" data-k="${k.id}">刪除清單</button></h4>
+          <div class="chk-bar"><i style="width:${k.items.length ? d / k.items.length * 100 : 0}%"></i></div>
+          ${k.items.map(i => `<div class="chk-item ${i.done ? 'done' : ''}">
+            <input type="checkbox" data-a="chkitem" data-k="${k.id}" data-id="${i.id}" ${i.done ? 'checked' : ''}>
+            <span>${esc(i.text)}</span>
+            <button class="icon-btn" data-a="delitem" data-k="${k.id}" data-id="${i.id}" title="刪除">✕</button></div>`).join('')}
+          <form class="m-add" data-k="${k.id}"><input placeholder="新增項目"><button class="btn">新增</button></form>
+        </div>`;
+      }).join('')}
+      <div><button class="btn" data-a="addchk">☑ 新增檢查清單</button></div>
+      <div class="m-sec"><h4>💬 留言與紀錄</h4>
+        <div class="m-add"><textarea class="m-ta small" id="newComment" placeholder="新增一則紀錄…">${esc(draft)}</textarea>
+          <button class="btn primary" data-a="addcomment">送出</button></div>
+        <div class="comments">${[...c.comments].sort((a, b) => b.date.localeCompare(a.date)).map(m => `
+          <div class="comment"><div class="when"><span>${fmtTime(m.date)}</span>
+            <button class="link-btn" data-a="delcomment" data-id="${m.id}">刪除</button></div>
+            <div>${md(m.text)}</div></div>`).join('')}</div>
+      </div>
+      <div class="m-row m-foot">
+        <button class="btn" data-a="archive">${c.archived ? '還原卡片' : '封存卡片'}</button>
+        <button class="btn danger" data-a="delete">刪除卡片</button>
+      </div>
+    </div>`;
+  if (editingDesc) $('descInput').focus();
+}
+
+function cardChanged() { save(); renderBoard(); renderModal(true); }
+$('cardModal').addEventListener('click', e => {
+  if (e.target.id === 'cardModal') { closeCard(); return; }
+  if (e.target.closest('a')) return;
+  const el = e.target.closest('[data-a]');
+  const c = openId && state.board.cards[openId];
+  if (!el || !c) return;
+  const a = el.dataset.a, chk = id => c.checklists.find(k => k.id === id);
+  if (a === 'close') closeCard();
+  else if (a === 'label') {
+    const id = el.dataset.id;
+    c.labelIds = c.labelIds.includes(id) ? c.labelIds.filter(x => x !== id) : [...c.labelIds, id];
+    cardChanged();
+  }
+  else if (a === 'cover') { c.cover = el.dataset.c || null; cardChanged(); }
+  else if (a === 'editdesc') { editingDesc = true; renderModal(true); }
+  else if (a === 'canceldesc') { editingDesc = false; renderModal(true); }
+  else if (a === 'savedesc') { c.desc = $('descInput').value; editingDesc = false; cardChanged(); }
+  else if (a === 'chkitem') { const i = chk(el.dataset.k).items.find(x => x.id === el.dataset.id); i.done = el.checked; cardChanged(); }
+  else if (a === 'delitem') { const k = chk(el.dataset.k); k.items = k.items.filter(x => x.id !== el.dataset.id); cardChanged(); }
+  else if (a === 'delchk') { if (confirm('刪除這個檢查清單？')) { c.checklists = c.checklists.filter(k => k.id !== el.dataset.k); cardChanged(); } }
+  else if (a === 'addchk') { c.checklists.push({ id: uid(), name: '待辦清單', items: [] }); cardChanged(); }
+  else if (a === 'addcomment') {
+    const v = $('newComment').value.trim();
+    if (!v) return;
+    c.comments.push({ id: uid(), date: new Date().toISOString(), text: v });
+    $('newComment').value = '';
+    cardChanged();
+  }
+  else if (a === 'delcomment') { if (confirm('刪除這則紀錄？')) { c.comments = c.comments.filter(m => m.id !== el.dataset.id); cardChanged(); } }
+  else if (a === 'archive') { c.archived = !c.archived; cardChanged(); }
+  else if (a === 'delete') {
+    if (!confirm(`刪除卡片「${c.title}」？`)) return;
+    delete state.board.cards[c.id];
+    closeCard(); save(); renderBoard();
+    showToast('已刪除卡片', () => { state.board.cards[c.id] = c; save(); renderBoard(); });
+  }
+});
+$('cardModal').addEventListener('change', e => {
+  const c = openId && state.board.cards[openId];
+  if (!c) return;
+  if (e.target.dataset.a === 'title') { const v = e.target.value.trim(); if (v) { c.title = v; save(); renderBoard(); } }
+  if (e.target.dataset.a === 'list') moveCard(c.id, e.target.value, cardsOf(e.target.value).length);
+});
+$('cardModal').addEventListener('keydown', e => {
+  if (e.target.dataset.a === 'title' && e.key === 'Enter' && !e.isComposing) e.target.blur();
+});
+$('cardModal').addEventListener('submit', e => {
+  e.preventDefault();
+  const c = openId && state.board.cards[openId];
+  const input = e.target.querySelector('input'), v = input.value.trim();
+  if (!c || !v) return;
+  c.checklists.find(k => k.id === e.target.dataset.k).items.push({ id: uid(), text: v, done: false });
+  cardChanged();
+  const again = $('mbox').querySelector(`form[data-k="${e.target.dataset.k}"] input`);
+  if (again) again.focus();
+});
+$('showArchived').onchange = e => { showArchived = e.target.checked; renderBoard(); };
+
 // ---------- cloud sync ----------
 // One row per day in Supabase. `snap` remembers what each day looked like at the
 // last successful sync, so we can tell local edits from remote ones (3-way merge per day).
 const TABLE = 'worklog_days';
+
+// Everything that syncs, as rows: each day ('YYYY-MM-DD'), the board's lists/labels
+// ('board:meta') and each card on its own ('card:<id>') so edits on two devices rarely collide.
+function rowsOf() {
+  const m = { ...state.days };
+  const b = state.board;
+  if (b.lists.length || b.labels.length) m['board:meta'] = { lists: b.lists, labels: b.labels };
+  for (const id in b.cards) m['card:' + id] = b.cards[id];
+  return m;
+}
+function setRow(k, v) {
+  const b = state.board;
+  if (k === 'board:meta') { b.lists = v ? v.lists : []; b.labels = v ? v.labels : []; }
+  else if (k.startsWith('card:')) { const id = k.slice(5); if (v) b.cards[id] = v; else delete b.cards[id]; }
+  else if (v) state.days[k] = v;
+  else delete state.days[k];
+}
 const cloud = { db: null, user: null, snap: {}, timer: null, chain: Promise.resolve() };
 const snapKey = () => `${KEY}.synced.${cloud.user.id}`;
 function saveSnap() { try { localStorage.setItem(snapKey(), JSON.stringify(cloud.snap)); } catch (e) {} }
@@ -1011,10 +1494,11 @@ async function pull() {
   if (error) throw error;
   const remote = {};
   data.forEach(r => { remote[r.day] = JSON.stringify(r.data); });
-  for (const k of new Set([...Object.keys(remote), ...Object.keys(state.days)])) {
-    const mine = state.days[k] ? JSON.stringify(state.days[k]) : undefined;
+  const rows = rowsOf();
+  for (const k of new Set([...Object.keys(remote), ...Object.keys(rows)])) {
+    const mine = rows[k] ? JSON.stringify(rows[k]) : undefined;
     if (mine !== cloud.snap[k]) continue;   // edited here since last sync: keep, push() sends it
-    if (remote[k]) state.days[k] = JSON.parse(remote[k]); else delete state.days[k];
+    setRow(k, remote[k] ? JSON.parse(remote[k]) : undefined);
   }
   cloud.snap = remote;
   saveSnap();
@@ -1023,12 +1507,12 @@ async function pull() {
 }
 
 async function push() {
-  const up = [], del = [];
-  for (const k in state.days) {
-    if (JSON.stringify(state.days[k]) !== cloud.snap[k])
-      up.push({ user_id: cloud.user.id, day: k, data: state.days[k], updated_at: new Date().toISOString() });
+  const up = [], del = [], rows = rowsOf();
+  for (const k in rows) {
+    if (JSON.stringify(rows[k]) !== cloud.snap[k])
+      up.push({ user_id: cloud.user.id, day: k, data: rows[k], updated_at: new Date().toISOString() });
   }
-  for (const k in cloud.snap) if (!state.days[k]) del.push(k);
+  for (const k in cloud.snap) if (!rows[k]) del.push(k);
   if (up.length) {
     const { error } = await cloud.db.from(TABLE).upsert(up);
     if (error) throw error;
