@@ -1,6 +1,6 @@
 // Offline support: keeps a copy of the page and its libraries so the site opens without internet.
 // Records themselves live in localStorage + Supabase; Supabase requests are never cached here.
-const CACHE = 'worklog-v5';
+const CACHE = 'worklog-v6';
 const PRECACHE = [
   './',
   './manifest.webmanifest',

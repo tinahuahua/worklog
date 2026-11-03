@@ -6,55 +6,53 @@
 <title>工作紀錄</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#7b5cff">
+<meta name="theme-color" content="#c48b8f">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #fbf8ff;
+  /* one colour throughout: 藕粉 (dusty rose) */
+  --bg: #faf6f5;
   --panel: #ffffff;
-  --panel-2: #f4effc;
-  --text: #24203a;
-  --muted: #8a84a0;
-  --line: #ebe4f5;
-  --accent: #7b5cff;
-  --accent-soft: #efeaff;
-  --done: #2f9e6b;
-  --done-soft: #e3f4ec;
-  --warn: #c9821a;
-  --warn-soft: #fbf0dc;
-  --danger: #d64545;
-  --shadow: 0 1px 2px rgba(80,40,120,.05), 0 8px 24px rgba(80,40,120,.07);
-  --glow-a: rgba(255,120,170,.22);
-  --glow-b: rgba(90,160,255,.20);
-  --glow-c: rgba(255,200,80,.20);
-  --rainbow: linear-gradient(90deg, #ff5e8a, #ff9f43, #f7c548, #2ecc8f, #4d9bff, #a66bff);
+  --panel-2: #f5eded;
+  --text: #3b2f31;
+  --muted: #9a8b8d;
+  --line: #ecdfdf;
+  --accent: #c48b8f;
+  --accent-strong: #a8686e;
+  --accent-soft: #f6e8e8;
+  --done: #a8686e;
+  --done-soft: #f6e8e8;
+  --warn: #a8686e;
+  --warn-soft: #f6e8e8;
+  --danger: #c0474f;
+  --shadow: 0 1px 2px rgba(120,70,75,.05), 0 8px 24px rgba(120,70,75,.07);
+  --glow: rgba(196,139,143,.18);
   color-scheme: light dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14121d; --panel: #1e1b2a; --panel-2: #2a2639; --text: #efedf5; --muted: #9590a8;
-    --line: #34304a; --accent: #8b7bff; --accent-soft: #2c2650; --done: #4cc38a; --done-soft: #1d3329;
-    --warn: #ffb347; --warn-soft: #3d2f1a; --danger: #ff7a7a; --shadow: none;
-    --glow-a: rgba(255,94,138,.14); --glow-b: rgba(77,155,255,.14); --glow-c: rgba(166,107,255,.14);
+    --bg: #1a1617; --panel: #241e20; --panel-2: #30282a; --text: #f1e8e8; --muted: #a5979a;
+    --line: #3d3234; --accent: #d6a3a6; --accent-strong: #c48b8f; --accent-soft: #3d2d30;
+    --done: #d6a3a6; --done-soft: #3d2d30; --warn: #d6a3a6; --warn-soft: #3d2d30; --danger: #f08a8f;
+    --shadow: none; --glow: rgba(214,163,166,.10);
   }
 }
 :root[data-theme="dark"] {
-  --bg: #14121d; --panel: #1e1b2a; --panel-2: #2a2639; --text: #efedf5; --muted: #9590a8;
-  --line: #34304a; --accent: #8b7bff; --accent-soft: #2c2650; --done: #4cc38a; --done-soft: #1d3329;
-  --warn: #ffb347; --warn-soft: #3d2f1a; --danger: #ff7a7a; --shadow: none;
-  --glow-a: rgba(255,94,138,.14); --glow-b: rgba(77,155,255,.14); --glow-c: rgba(166,107,255,.14);
+  --bg: #1a1617; --panel: #241e20; --panel-2: #30282a; --text: #f1e8e8; --muted: #a5979a;
+  --line: #3d3234; --accent: #d6a3a6; --accent-strong: #c48b8f; --accent-soft: #3d2d30;
+  --done: #d6a3a6; --done-soft: #3d2d30; --warn: #d6a3a6; --warn-soft: #3d2d30; --danger: #f08a8f;
+  --shadow: none; --glow: rgba(214,163,166,.10);
 }
 
 * { box-sizing: border-box; }
 body {
   margin: 0; color: var(--text); min-height: 100vh;
   background:
-    radial-gradient(600px 400px at 0% 0%, var(--glow-a), transparent 70%),
-    radial-gradient(700px 500px at 100% 10%, var(--glow-b), transparent 70%),
-    radial-gradient(600px 500px at 50% 100%, var(--glow-c), transparent 70%),
+    radial-gradient(700px 500px at 0% 0%, var(--glow), transparent 70%),
+    radial-gradient(700px 500px at 100% 100%, var(--glow), transparent 70%),
     var(--bg);
   background-attachment: fixed;
   font-family: "Noto Sans TC", system-ui, -apple-system, "Microsoft JhengHei", sans-serif;
@@ -91,7 +89,7 @@ header.top .spacer { flex: 1; }
   padding: 7px 12px; font-size: 14px;
 }
 .btn:hover { background: var(--panel-2); }
-.btn.primary { background: linear-gradient(135deg, #ff5e8a, #a66bff); border: none; color: #fff; font-weight: 500; }
+.btn.primary { background: var(--accent-strong); border: none; color: #fff; font-weight: 500; }
 .btn.primary:hover { filter: brightness(1.08); }
 .icon-btn {
   border: none; background: transparent; border-radius: 8px; width: 32px; height: 32px;
@@ -120,7 +118,7 @@ header.top .spacer { flex: 1; }
 .cal-day.has:hover { background: color-mix(in srgb, var(--wd) 22%, transparent); }
 .cal-day.out { color: var(--muted); opacity: .45; }
 .cal-day.weekend .num { color: var(--muted); }
-.cal-day.today .num { background: linear-gradient(135deg, #ff5e8a, #a66bff); color: #fff; border-radius: 999px; font-weight: 700; }
+.cal-day.today .num { background: var(--accent-strong); color: #fff; border-radius: 999px; font-weight: 700; }
 .cal-day.selected { border-color: var(--wd); border-width: 2px; }
 .cal-day .num { min-width: 24px; height: 24px; line-height: 24px; text-align: center; padding: 0 4px; }
 .cal-day .meta { font-size: 10.5px; color: var(--muted); line-height: 1.2; }
@@ -136,9 +134,7 @@ header.top .spacer { flex: 1; }
 .section { padding: 16px; }
 .section h3 { margin: 0 0 10px; font-size: 14px; color: var(--muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
 .section h3::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--dot, var(--accent)); }
-#searchSection h3 { --dot: #4d9bff; }
-#backlogSection h3 { --dot: #ff9f43; }
-.section h3 .count { background: linear-gradient(135deg, #ff9f43, #ff5e8a); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
+.section h3 .count { background: var(--accent-strong); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
 .mini-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow: auto; }
 .mini-item {
   display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; font-size: 14px;
@@ -169,7 +165,7 @@ header.top .spacer { flex: 1; }
 .progress { margin: 18px 0 6px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
 .bar { flex: 1; height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
 .bar { height: 8px; }
-.bar > i { display: block; height: 100%; background: var(--rainbow); background-size: 300px 100%; border-radius: 999px; transition: width .25s; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .25s; }
 
 .add { display: flex; gap: 8px; margin: 12px 0 8px; }
 .add input {
@@ -201,8 +197,8 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 /* important items (submissions / meetings), kept apart from tasks */
 .events {
   margin-top: 16px; padding: 14px; border-radius: 14px;
-  background: color-mix(in srgb, #ff5e8a 6%, var(--panel));
-  border: 1px solid color-mix(in srgb, #ff5e8a 22%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
 }
 .ev-head { font-weight: 700; font-size: 14px; margin-bottom: 10px; }
 .ev-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -224,7 +220,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .ev-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .seg { display: flex; gap: 2px; background: var(--panel-2); padding: 3px; border-radius: 10px; }
 .seg button { border: none; background: none; padding: 5px 10px; border-radius: 8px; font-size: 13px; color: var(--muted); }
-.seg button.on { background: var(--panel); color: var(--c); font-weight: 700; box-shadow: var(--shadow); }
+.seg button.on { background: var(--panel); color: var(--accent-strong); font-weight: 700; box-shadow: var(--shadow); }
 .ev-add input {
   padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); outline: none; min-width: 0;
 }
@@ -234,7 +230,6 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .cal-day .ev-mark { font-size: 10px; line-height: 1; letter-spacing: -1px; }
 .cal-day .ev-mark.dim { opacity: .35; }
 .mini-item .d.overdue { color: var(--danger); font-weight: 700; }
-#upcomingSection h3 { --dot: #ff5e8a; }
 
 /* ---------- FSD kanban board ---------- */
 .board-wrap { margin-top: 24px; }
@@ -347,12 +342,12 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px;
 }
 .sync::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--sync-c, var(--muted)); }
-.sync[data-s="ok"] { --sync-c: #2ecc8f; }
-.sync[data-s="syncing"] { --sync-c: #4d9bff; }
+.sync[data-s="ok"] { --sync-c: var(--accent); }
+.sync[data-s="syncing"] { --sync-c: var(--accent); }
 .sync[data-s="syncing"]::before { animation: pulse .8s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
-.sync[data-s="error"] { --sync-c: #ff5e5e; color: var(--danger); }
-.sync[data-s="login"] { --sync-c: #ff9f43; }
+.sync[data-s="error"] { --sync-c: var(--danger); color: var(--danger); }
+.sync[data-s="login"] { --sync-c: var(--muted); }
 .sync[data-s="offline"] { --sync-c: #9590a8; }
 .auth {
   position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
@@ -496,9 +491,9 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
         <div class="ev-empty" id="evEmpty">這天沒有要繳交的文件或會議</div>
         <form class="ev-add" id="eventForm">
           <div class="seg" id="evType">
-            <button type="button" data-t="submit" style="--c:#ff5e8a">📄 繳交</button>
-            <button type="button" data-t="meeting" style="--c:#4d9bff">👥 會議</button>
-            <button type="button" data-t="other" style="--c:#a66bff">⭐ 其他</button>
+            <button type="button" data-t="submit">📄 繳交</button>
+            <button type="button" data-t="meeting">👥 會議</button>
+            <button type="button" data-t="other">⭐ 其他</button>
           </div>
           <input id="evText" autocomplete="off">
           <input id="evTime" type="time" title="時間（可不填）">
@@ -557,9 +552,9 @@ const SUPABASE_KEY = 'sb_publishable_JolHbMrnTKZMF1Qvohw4kw_qZcMD9r9';
 
 const KEY = 'worklog.v1';
 const DOW = ['日', '一', '二', '三', '四', '五', '六'];
-// one color per weekday (日..六), and a cycling palette for task rows
-const WD_COLORS = ['#ff5e8a', '#ff6b6b', '#ff9f43', '#e8b100', '#2ecc8f', '#4d9bff', '#a66bff'];
-const TASK_COLORS = ['#ff5e8a', '#ff9f43', '#e8b100', '#2ecc8f', '#22c1c3', '#4d9bff', '#a66bff'];
+// single-colour theme: weekdays and task rows all use the accent (藕粉)
+const WD_COLORS = Array(7).fill('var(--accent)');
+const TASK_COLORS = ['var(--accent)'];
 const $ = id => document.getElementById(id);
 
 // ---------- storage ----------
@@ -621,9 +616,9 @@ function cleanup(k) {
 
 // important items: submissions, meetings, other
 const EV = {
-  submit:  { icon: '📄', label: '繳交', done: '已繳交', color: '#ff5e8a', ph: '例如：FSD 97405、97412' },
-  meeting: { icon: '👥', label: '會議', done: '已開完', color: '#4d9bff', ph: '例如：週會、GBP BA Review' },
-  other:   { icon: '⭐', label: '其他', done: '完成',   color: '#a66bff', ph: '例如：系統上線' },
+  submit:  { icon: '📄', label: '繳交', done: '已繳交', color: 'var(--accent-strong)', ph: '例如：FSD 97405、97412' },
+  meeting: { icon: '👥', label: '會議', done: '已開完', color: 'var(--accent-strong)', ph: '例如：週會、GBP BA Review' },
+  other:   { icon: '⭐', label: '其他', done: '完成',   color: 'var(--accent-strong)', ph: '例如：系統上線' },
 };
 const evOf = e => EV[e.type] || EV.other;
 const byTime = (a, b) => (a.time || '99:99').localeCompare(b.time || '99:99');
