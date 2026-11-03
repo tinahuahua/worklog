@@ -71,9 +71,14 @@ header.top h1 {
   font-size: 24px; margin: 0; font-weight: 700; letter-spacing: .02em;
 }
 header.top .spacer { flex: 1; }
-.search {
-  position: relative; width: 260px; max-width: 100%;
+.search-wrap { position: relative; width: 300px; max-width: 100%; }
+.search { position: relative; display: block; }
+.search-pop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 12; width: min(460px, calc(100vw - 32px));
+  max-height: 65vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,.25);
 }
+.search-pop[hidden] { display: none; }
+.search-pop .mini-list { max-height: none; }
 .search input {
   width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--line); border-radius: 10px;
   background: var(--panel); outline: none;
@@ -327,6 +332,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .chk-item .icon-btn { width: 24px; height: 24px; opacity: 0; }
 .chk-item:hover .icon-btn { opacity: 1; }
 .m-add { display: flex; gap: 8px; margin-top: 6px; align-items: flex-start; }
+.m-add .btn { white-space: nowrap; flex: none; }
 .m-add input { flex: 1; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); outline: none; }
 .m-add input:focus { border-color: var(--accent); }
 .comments { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
@@ -388,6 +394,35 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
 .menu button:hover { background: var(--panel-2); }
 
+/* ---------- tablets & phones ---------- */
+@media (max-width: 860px) {
+  /* today's record first, calendar and lists below it */
+  .layout { display: flex; flex-direction: column; }
+  .layout > main { order: -1; }
+}
+@media (max-width: 640px) {
+  .app { padding-top: 16px; }
+  header.top { gap: 8px; margin-bottom: 14px; }
+  header.top h1 { font-size: 20px; }
+  .search-wrap { order: 10; width: 100%; }
+  .search-pop { left: 0; right: 0; width: auto; }
+  .sync { font-size: 12px; padding: 4px 10px 4px 8px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .day { padding: 18px 14px; min-height: 0; }
+  .day-head .date { font-size: 24px; }
+  .hint { display: none; }
+  .events { padding: 12px; }
+  .ev-add .seg { width: 100%; }
+  .ev-add .seg button { flex: 1; }
+  .cal { padding: 12px; }
+  .board-wrap { margin-top: 20px; }
+  .board { scroll-snap-type: x mandatory; gap: 10px; }
+  .col, .add-col { flex-basis: calc(100vw - 64px); scroll-snap-align: start; max-height: 70vh; }
+  .modal { padding: 0; }
+  .mbox { border-radius: 0; min-height: 100%; }
+  .mbody { padding: 16px; gap: 18px; }
+  .m-title { font-size: 18px; }
+}
+
 </style>
 </head>
 <body>
@@ -395,10 +430,16 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   <header class="top">
     <h1>工作紀錄</h1>
     <div class="spacer"></div>
+    <div class="search-wrap">
     <label class="search">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="search" type="search" placeholder="搜尋所有紀錄（如單號）" autocomplete="off">
     </label>
+      <div class="card section search-pop" id="searchSection" hidden>
+        <h3 id="searchTitle">搜尋結果</h3>
+        <ul class="mini-list" id="searchList"></ul>
+      </div>
+    </div>
     <button class="sync" id="syncBtn" hidden></button>
     <button class="btn" id="todayBtn">今天</button>
     <div class="menu-wrap">
@@ -424,11 +465,6 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
           <button class="icon-btn" id="nextMonth" title="下個月">›</button>
         </div>
         <div class="cal-grid" id="calGrid"></div>
-      </div>
-
-      <div class="card section" id="searchSection" hidden>
-        <h3>搜尋結果</h3>
-        <ul class="mini-list" id="searchList"></ul>
       </div>
 
       <div class="card section" id="upcomingSection">
@@ -691,7 +727,7 @@ function renderCalendar() {
     b.style.setProperty('--wd', WD_COLORS[d.getDay()]);
     b.innerHTML = `<span class="num">${d.getDate()}</span>${meta}${mark}${tag}`;
     b.title = [shortLabel(k), day.note, ...evs.map(e => `${evOf(e).icon} ${e.text}`)].filter(Boolean).join('\n');
-    b.onclick = () => select(k);
+    b.onclick = () => { select(k); showDay(); };
     grid.appendChild(b);
   }
 }
@@ -853,10 +889,11 @@ function renderBacklog() {
   });
 }
 
+let searchOpen = false;
 function renderSearch() {
   const q = $('search').value.trim().toLowerCase();
-  $('searchSection').hidden = !q;
-  if (!q) return;
+  $('searchSection').hidden = !q || !searchOpen;
+  if (!q || !searchOpen) return;
   const hits = [];
   Object.values(state.board.cards).forEach(c => {
     if ((c.title + '\n' + c.desc).toLowerCase().includes(q)) {
@@ -871,13 +908,19 @@ function renderSearch() {
     day.tasks.forEach(t => { if (t.text.toLowerCase().includes(q)) hits.push({ k, text: t.text, done: t.done }); });
   });
   const ul = $('searchList');
+  $('searchTitle').textContent = hits.length ? `搜尋結果（${hits.length}）` : '搜尋結果';
   ul.innerHTML = hits.length ? '' : '<li class="empty">找不到符合的紀錄</li>';
   hits.forEach(h => {
     const li = document.createElement('li');
     li.className = 'mini-item';
     const d = h.card ? `<span class="d" title="${esc(h.label)}" style="overflow:hidden;text-overflow:ellipsis">${esc(h.label)}</span>` : `<span class="d">${shortLabel(h.k)}</span>`;
     li.innerHTML = `${d}<span class="t ${h.done ? 'done' : ''}">${highlight(h.text, q)}</span>`;
-    li.onclick = () => h.card ? openCard(h.card) : select(h.k);
+    li.onclick = () => {
+      searchOpen = false;
+      renderSearch();
+      if (h.card) openCard(h.card);
+      else { select(h.k); showDay(); }
+    };
     li.style.cursor = 'pointer';
     ul.appendChild(li);
   });
@@ -958,7 +1001,19 @@ $('nextDay').onclick = () => select(addDays(selected, 1));
 $('todayBtn').onclick = () => select(todayKey());
 $('prevMonth').onclick = () => { viewMonth.setMonth(viewMonth.getMonth() - 1); renderCalendar(); };
 $('nextMonth').onclick = () => { viewMonth.setMonth(viewMonth.getMonth() + 1); renderCalendar(); };
-$('search').addEventListener('input', renderSearch);
+$('search').addEventListener('input', () => { searchOpen = true; renderSearch(); });
+$('search').addEventListener('focus', () => { searchOpen = true; renderSearch(); });
+$('search').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { searchOpen = false; renderSearch(); e.target.blur(); }
+});
+document.addEventListener('pointerdown', e => {
+  if (searchOpen && !e.target.closest('.search-wrap')) { searchOpen = false; renderSearch(); }
+});
+// on phones the day panel sits above the calendar: bring it into view after picking a date
+const isNarrow = () => matchMedia('(max-width: 860px)').matches;
+function showDay() {
+  if (isNarrow()) document.querySelector('main.day').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 document.addEventListener('keydown', e => {
   if (!$('cardModal').hidden) {
