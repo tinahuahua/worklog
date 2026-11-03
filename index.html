@@ -238,7 +238,10 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .board-head .sub { color: var(--muted); font-size: 13px; }
 .board-head .spacer { flex: 1; }
 .board-head label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
+.board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; cursor: grab; }
+.board.panning { cursor: grabbing; user-select: none; }
+.board .kcard, .board button, .board input, .board textarea, .board .name { cursor: auto; }
+.board .kcard, .board button { cursor: pointer; }
 .col {
   flex: 0 0 272px; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line);
   border-radius: 14px; padding: 10px; display: flex; flex-direction: column; max-height: 78vh;
@@ -340,7 +343,8 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .sync::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--sync-c, var(--muted)); }
 .sync[data-s="ok"] { --sync-c: #2ecc8f; }
 .sync[data-s="syncing"] { --sync-c: #4d9bff; }
-.sync[data-s="syncing"]::before { animation: twinkle .8s ease-in-out infinite; }
+.sync[data-s="syncing"]::before { animation: pulse .8s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 .sync[data-s="error"] { --sync-c: #ff5e5e; color: var(--danger); }
 .sync[data-s="login"] { --sync-c: #ff9f43; }
 .sync[data-s="offline"] { --sync-c: #9590a8; }
@@ -384,54 +388,6 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
 .menu button:hover { background: var(--panel-2); }
 
-/* ---------- christmas ---------- */
-:root { --snow: #a9b8f0; --hill-back: #e9e4fb; --hill-front: #ffffff; --hill-edge: #dcd6f3; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --snow: #ffffff; --hill-back: #2b2742; --hill-front: #3a3558; --hill-edge: #4a4470; }
-}
-:root[data-theme="dark"] { --snow: #ffffff; --hill-back: #2b2742; --hill-front: #3a3558; --hill-edge: #4a4470; }
-
-.app { position: relative; z-index: 1; padding-bottom: 200px; }
-.snow, .xmas { position: fixed; pointer-events: none; z-index: 0; }
-.snow { inset: 0; overflow: hidden; }
-.flake {
-  position: absolute; top: -12px; border-radius: 50%; background: var(--snow);
-  animation: fall linear infinite;
-}
-@keyframes fall {
-  from { transform: translate3d(0, -10px, 0); }
-  to   { transform: translate3d(var(--drift), 105vh, 0); }
-}
-.xmas { left: 0; right: 0; bottom: 0; height: 190px; }
-.xmas .hills { position: absolute; inset: auto 0 0 0; width: 100%; height: 90px; }
-.xmas .tree   { position: absolute; left: 4%; bottom: 22px; width: 120px; }
-.xmas .gifts  { position: absolute; left: calc(4% + 108px); bottom: 20px; width: 86px; }
-.xmas .snowman{ position: absolute; right: 5%; bottom: 18px; width: 96px; transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite; }
-.xmas .sign {
-  position: absolute; right: calc(5% + 108px); bottom: 34px; display: flex; flex-direction: column; align-items: center;
-}
-.xmas .sign b {
-  background: #b77a4f; color: #fff7ea; font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 8px;
-  box-shadow: inset 0 -3px 0 rgba(0,0,0,.15); white-space: nowrap; transform: rotate(-3deg);
-}
-.xmas .sign i { width: 6px; height: 34px; background: #8d5a37; border-radius: 3px; margin-top: -2px; }
-@keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-.twinkle { animation: twinkle 1.6s ease-in-out infinite; }
-@keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
-.star { transform-origin: 60px 17px; animation: glow 2.4s ease-in-out infinite; }
-@keyframes glow { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #ffd43b); } 50% { transform: scale(1.15); filter: drop-shadow(0 0 8px #ffd43b); } }
-body.no-xmas .snow, body.no-xmas .xmas { display: none; }
-body.no-xmas .app { padding-bottom: 64px; }
-@media (max-width: 640px) {
-  .xmas .gifts { display: none; }
-  .xmas .tree { width: 96px; }
-  .xmas .snowman { width: 80px; }
-  .xmas .sign { right: calc(5% + 88px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .flake { display: none; }
-  .xmas *, .xmas { animation: none !important; }
-}
 </style>
 </head>
 <body>
@@ -453,7 +409,6 @@ body.no-xmas .app { padding-bottom: 64px; }
         <button data-act="export">匯出備份 (JSON)</button>
         <button data-act="import">匯入備份</button>
         <button data-act="theme">切換深色 / 淺色</button>
-        <button data-act="xmas">聖誕裝飾 開 / 關</button>
         <button data-act="auth" id="menuAuth" hidden>登入同步</button>
       </div>
       <input type="file" id="fileInput" accept="application/json,.json" hidden>
@@ -540,66 +495,6 @@ body.no-xmas .app { padding-bottom: 64px; }
 </div>
 
 <div class="modal" id="cardModal" hidden><div class="mbox" id="mbox"></div></div>
-
-<div class="snow" id="snow" aria-hidden="true"></div>
-<div class="xmas" aria-hidden="true">
-  <svg class="hills" viewBox="0 0 1200 90" preserveAspectRatio="none">
-    <path d="M0 40 C 200 0, 380 10, 560 35 S 900 5, 1200 30 L1200 90 L0 90 Z" fill="var(--hill-back)"/>
-    <path d="M0 62 C 260 30, 460 40, 700 58 S 1020 34, 1200 52 L1200 90 L0 90 Z" fill="var(--hill-front)" stroke="var(--hill-edge)" stroke-width="2"/>
-  </svg>
-
-  <svg class="tree" viewBox="0 0 120 160">
-    <rect x="52" y="132" width="16" height="22" rx="3" fill="#9a6440"/>
-    <polygon points="60,22 22,72 98,72" fill="#34c27d"/>
-    <polygon points="60,46 14,106 106,106" fill="#2bb070"/>
-    <polygon points="60,76 6,140 114,140" fill="#239d62"/>
-    <path d="M30 66 Q60 80 90 64 M22 100 Q60 116 100 98 M14 134 Q60 150 108 132" fill="none" stroke="#ffd43b" stroke-width="2" stroke-dasharray="1 5" stroke-linecap="round"/>
-    <g>
-      <circle class="twinkle" cx="44" cy="62" r="4.5" fill="#ff5e8a"/>
-      <circle class="twinkle" cx="76" cy="58" r="4.5" fill="#4d9bff" style="animation-delay:.4s"/>
-      <circle class="twinkle" cx="36" cy="96" r="5" fill="#ff9f43" style="animation-delay:.8s"/>
-      <circle class="twinkle" cx="62" cy="92" r="5" fill="#a66bff" style="animation-delay:.2s"/>
-      <circle class="twinkle" cx="88" cy="94" r="5" fill="#ff5e8a" style="animation-delay:1s"/>
-      <circle class="twinkle" cx="26" cy="128" r="5" fill="#4d9bff" style="animation-delay:.6s"/>
-      <circle class="twinkle" cx="52" cy="124" r="5" fill="#ffd43b" style="animation-delay:1.2s"/>
-      <circle class="twinkle" cx="80" cy="128" r="5" fill="#ff9f43" style="animation-delay:.3s"/>
-      <circle class="twinkle" cx="100" cy="126" r="5" fill="#a66bff" style="animation-delay:.9s"/>
-    </g>
-    <path class="star" d="M60 4 L64 13 L74 14 L66.5 20.5 L69 30 L60 25 L51 30 L53.5 20.5 L46 14 L56 13 Z" fill="#ffd43b"/>
-  </svg>
-
-  <svg class="gifts" viewBox="0 0 90 56">
-    <rect x="2" y="18" width="44" height="36" rx="4" fill="#ff5e8a"/>
-    <rect x="20" y="18" width="8" height="36" fill="#ffd43b"/>
-    <rect x="2" y="30" width="44" height="7" fill="#ffd43b"/>
-    <path d="M24 18 C 14 6, 8 14, 24 18 C 40 14, 34 6, 24 18" fill="none" stroke="#ffd43b" stroke-width="4" stroke-linecap="round"/>
-    <rect x="50" y="30" width="36" height="24" rx="4" fill="#4d9bff"/>
-    <rect x="64" y="30" width="7" height="24" fill="#fff"/>
-    <path d="M67.5 30 C 59 21, 55 28, 67.5 30 C 80 28, 76 21, 67.5 30" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
-  </svg>
-
-  <div class="sign"><b id="xmasCountdown"></b><i></i></div>
-
-  <svg class="snowman" viewBox="0 0 100 140">
-    <path d="M22 78 L4 62 M78 78 L96 60 M8 66 L2 58 M90 66 L98 62" stroke="#8d5a37" stroke-width="3" stroke-linecap="round" fill="none"/>
-    <circle cx="50" cy="104" r="32" fill="#fff" stroke="#dbe2f5" stroke-width="2"/>
-    <circle cx="50" cy="56" r="23" fill="#fff" stroke="#dbe2f5" stroke-width="2"/>
-    <circle cx="50" cy="94" r="3" fill="#3b3355"/>
-    <circle cx="50" cy="106" r="3" fill="#3b3355"/>
-    <circle cx="50" cy="118" r="3" fill="#3b3355"/>
-    <path d="M28 74 Q50 84 72 74 L72 82 Q50 92 28 82 Z" fill="#ff5e5e"/>
-    <path d="M62 80 L70 102 L60 100 L56 82 Z" fill="#ff5e5e"/>
-    <circle cx="42" cy="52" r="2.8" fill="#3b3355"/>
-    <circle cx="58" cy="52" r="2.8" fill="#3b3355"/>
-    <path d="M50 57 L64 61 L50 62 Z" fill="#ff9f43"/>
-    <circle cx="36" cy="62" r="3.5" fill="#ffb3c7" opacity=".8"/>
-    <circle cx="64" cy="62" r="3.5" fill="#ffb3c7" opacity=".8"/>
-    <path d="M43 66 Q50 71 57 66" stroke="#3b3355" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <rect x="30" y="31" width="40" height="6" rx="3" fill="#3b3355"/>
-    <rect x="37" y="10" width="26" height="23" rx="3" fill="#3b3355"/>
-    <rect x="37" y="25" width="26" height="5" fill="#ff5e5e"/>
-  </svg>
-</div>
 
 <div class="auth" id="auth" hidden>
   <form class="card auth-box" id="authForm">
@@ -1098,9 +993,6 @@ $('menu').onclick = e => {
     const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     root.dataset.theme = dark ? 'light' : 'dark';
     try { localStorage.setItem(KEY + '.theme', root.dataset.theme); } catch (e) {}
-  } else if (act === 'xmas') {
-    const off = document.body.classList.toggle('no-xmas');
-    try { localStorage.setItem(KEY + '.xmas', off ? 'off' : 'on'); } catch (e) {}
   } else if (act === 'auth') {
     if (cloud.user) {
       if (confirm('確定要登出嗎？這台裝置上的紀錄會保留。')) cloud.db.auth.signOut();
@@ -1456,6 +1348,24 @@ $('cardModal').addEventListener('submit', e => {
 });
 $('showArchived').onchange = e => { showArchived = e.target.checked; renderBoard(); };
 
+// drag the board's empty space with the mouse to scroll left/right (cards keep their own drag)
+(function panBoard() {
+  const el = $('board');
+  let startX = null, startScroll = 0;
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    if (e.target.closest('.kcard, button, input, textarea, .name, .new-card')) return;
+    startX = e.clientX;
+    startScroll = el.scrollLeft;
+    el.classList.add('panning');
+  });
+  window.addEventListener('pointermove', e => {
+    if (startX === null) return;
+    el.scrollLeft = startScroll - (e.clientX - startX);
+  });
+  window.addEventListener('pointerup', () => { startX = null; el.classList.remove('panning'); });
+})();
+
 // ---------- cloud sync ----------
 // One row per day in Supabase. `snap` remembers what each day looked like at the
 // last successful sync, so we can tell local edits from remote ones (3-way merge per day).
@@ -1620,33 +1530,9 @@ window.addEventListener('online', () => { if (cloud.user) syncNow(true); });
 window.addEventListener('offline', () => { if (cloud.user) setSync('offline'); });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-// ---------- christmas ----------
-try { if (localStorage.getItem(KEY + '.xmas') === 'off') document.body.classList.add('no-xmas'); } catch (e) {}
-(function makeSnow() {
-  const box = $('snow');
-  for (let i = 0; i < 40; i++) {
-    const f = document.createElement('span');
-    const size = 3 + Math.random() * 6;
-    const dur = 9 + Math.random() * 10;
-    f.className = 'flake';
-    f.style.cssText = `left:${Math.random() * 100}%;width:${size}px;height:${size}px;opacity:${.35 + Math.random() * .5};` +
-      `animation-duration:${dur}s;animation-delay:${-Math.random() * dur}s;--drift:${(Math.random() - .5) * 120}px`;
-    box.appendChild(f);
-  }
-})();
-function renderCountdown() {
-  const now = new Date(), y = now.getFullYear();
-  const today = new Date(y, now.getMonth(), now.getDate());
-  let xmas = new Date(y, 11, 25);
-  if (today > xmas) xmas = new Date(y + 1, 11, 25);
-  const days = Math.round((xmas - today) / 86400000);
-  $('xmasCountdown').textContent = days === 0 ? '聖誕快樂！🎄' : `聖誕節倒數 ${days} 天`;
-}
-renderCountdown();
-
 // refresh "today" when the page stays open past midnight
 let lastToday = todayKey();
-setInterval(() => { if (todayKey() !== lastToday) { lastToday = todayKey(); render(); renderCountdown(); } }, 60000);
+setInterval(() => { if (todayKey() !== lastToday) { lastToday = todayKey(); render(); } }, 60000);
 
 render();
 initCloud();
