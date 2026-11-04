@@ -272,7 +272,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .kcard.is-ongoing { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent-strong); }
 .ongoing { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; }
 .ongoing input { accent-color: var(--accent-strong); width: 14px; height: 14px; margin: 0; cursor: pointer; }
-.kcard.is-ongoing .ongoing, .m-row .ongoing.on { color: var(--accent-strong); font-weight: 700; }
+.m-row .ongoing.on { color: var(--accent-strong); font-weight: 700; }
 .kcard .cover { height: 24px; }
 .kcard .body { padding: 8px 10px; }
 .kcard .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
@@ -1232,15 +1232,13 @@ function cardEl(c) {
       ${labels.length ? `<div class="labels">${labels.map(x => `<span class="lbl" style="background:${colorOf(x.color)}">${esc(x.name)}</span>`).join('')}</div>` : ''}
       <div class="title">${esc(c.title)}</div>
       <div class="badges">${[
-        `<label class="ongoing" title="正在進行"><input type="checkbox" ${c.ongoing ? 'checked' : ''}>Ongoing</label>`,
         c.ur ? `<a class="ur-badge" href="${esc(c.ur)}" target="_blank" rel="noopener" title="開啟 UR：${esc(c.ur)}">🔗 ${esc(urLabel(c.ur))}</a>` : '',
         c.desc ? '<span title="有描述">📝</span>' : '',
         items.length ? `<span class="${done === items.length ? 'done' : ''}" title="檢查清單">☑ ${done}/${items.length}</span>` : '',
         c.archived ? '<span>已封存</span>' : '',
       ].join('')}</div>
     </div>`;
-  d.onclick = e => { if (!e.target.closest('a, .ongoing')) openCard(c.id); };
-  d.querySelector('.ongoing input').onchange = e => toggleOngoing(c.id, e.target.checked);
+  d.onclick = e => { if (!e.target.closest('a')) openCard(c.id); };
   d.addEventListener('dragstart', e => {
     dragCard = c.id;
     d.classList.add('dragging');
