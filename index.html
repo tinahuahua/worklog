@@ -1113,7 +1113,7 @@ function md(s) {
   h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   h = h.replace(/~~(.+?)~~/g, '<del>$1</del>');
   h = h.replace(/(^|[\s>])_(.+?)_(?=[\s<]|$)/gm, '$1<em>$2</em>');
-  h = h.replace(/:ok:/g, '✅').replace(/^- /gm, '• ');
+  h = h.replace(/:ok:/gi, '✅').replace(/^- /gm, '• ');
   return h.replace(/\n/g, '<br>');
 }
 // UR link: keep only http(s) links; show the Jira key (e.g. I4-20881) when there is one
@@ -1349,7 +1349,7 @@ function renderModal(force) {
       </div>
       <div class="m-sec"><h4>📝 描述 ${editingDesc ? '' : '<button class="link-btn" data-a="editdesc">編輯</button>'}</h4>
         ${editingDesc
-          ? `<textarea class="m-ta" id="descInput">${esc(c.desc)}</textarea>
+          ? `<textarea class="m-ta" id="descInput">${esc(c.desc.replace(/:ok:/gi, '✅'))}</textarea>
              <div class="m-row"><button class="btn primary" data-a="savedesc">儲存</button><button class="btn" data-a="canceldesc">取消</button></div>`
           : `<div class="desc-view" data-a="editdesc">${c.desc ? md(c.desc) : '<span class="placeholder">點此新增描述或紀錄…</span>'}</div>`}
       </div>
