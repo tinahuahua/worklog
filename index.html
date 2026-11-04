@@ -304,17 +304,18 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .arch-tag { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 1px 8px; font-weight: 700; }
 .m-sec h4 { margin: 0 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .m-sec h4 .muted { color: var(--muted); font-weight: 500; font-size: 13px; }
-.lbl-pick, .cover-pick { display: flex; gap: 6px; flex-wrap: wrap; }
-.lbl-pick .lbl { cursor: pointer; height: 26px; line-height: 26px; min-width: 48px; font-size: 12px; }
-.lbl-pick .lbl.off { opacity: .3; }
+.cover-pick { display: flex; gap: 6px; flex-wrap: wrap; }
 .sw { width: 32px; height: 22px; border-radius: 6px; border: 2px solid transparent; font-size: 11px; color: var(--muted); }
 .sw.on { border-color: var(--text); }
-.desc-view { font-size: 14px; line-height: 1.75; word-break: break-word; padding: 10px 12px; background: var(--bg); border-radius: 10px; cursor: text; min-height: 48px; }
+.desc-view {
+  font-size: 15px; line-height: 1.8; word-break: break-word; padding: 14px 16px; background: var(--bg);
+  border-radius: 10px; cursor: text; min-height: 40vh;
+}
 .desc-view a, .comment a { color: var(--accent); }
 .desc-view del, .comment del { color: var(--muted); }
 .placeholder { color: var(--muted); }
 .m-ta {
-  width: 100%; min-height: 180px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--accent);
+  width: 100%; min-height: 55vh; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--accent); line-height: 1.7;
   background: var(--bg); font: inherit; font-size: 14px; color: inherit; outline: none; resize: vertical;
 }
 .m-ta.small { min-height: 64px; border-color: var(--line); }
@@ -1178,7 +1179,6 @@ function cardEl(c) {
       <div class="title">${esc(c.title)}</div>
       <div class="badges">${[
         c.desc ? '<span title="有描述">📝</span>' : '',
-        c.comments.length ? `<span title="留言">💬 ${c.comments.length}</span>` : '',
         items.length ? `<span class="${done === items.length ? 'done' : ''}" title="檢查清單">☑ ${done}/${items.length}</span>` : '',
         c.archived ? '<span>已封存</span>' : '',
       ].join('')}</div>
@@ -1298,7 +1298,6 @@ function renderModal(force) {
   const box = $('mbox');
   // don't wipe something the user is typing when a sync refresh comes in
   if (!force && box.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
-  const draft = $('newComment') ? $('newComment').value : '';
   box.innerHTML = `
     ${c.cover ? `<div class="cover" style="background:${colorOf(c.cover)}"></div>` : ''}
     <button class="icon-btn m-close" data-a="close" title="關閉 (Esc)">✕</button>
@@ -1310,10 +1309,6 @@ function renderModal(force) {
           ${c.archived ? '<span class="arch-tag">已封存</span>' : ''}
         </div>
       </div>
-      <div class="m-sec"><h4>🏷 標籤</h4><div class="lbl-pick">${state.board.labels.map(l =>
-        `<button class="lbl ${c.labelIds.includes(l.id) ? '' : 'off'}" data-a="label" data-id="${l.id}" style="background:${colorOf(l.color)}">${esc(l.name)}</button>`).join('')}</div></div>
-      <div class="m-sec"><h4>🎨 封面顏色</h4><div class="cover-pick">${['', ...Object.keys(TRELLO_COLORS)].map(k =>
-        `<button class="sw ${(c.cover || '') === k ? 'on' : ''}" data-a="cover" data-c="${k}" title="${k || '無'}" style="background:${k ? TRELLO_COLORS[k] : 'var(--panel-2)'}">${k ? '' : '✕'}</button>`).join('')}</div></div>
       <div class="m-sec"><h4>📝 描述 ${editingDesc ? '' : '<button class="link-btn" data-a="editdesc">編輯</button>'}</h4>
         ${editingDesc
           ? `<textarea class="m-ta" id="descInput">${esc(c.desc)}</textarea>
@@ -1333,14 +1328,8 @@ function renderModal(force) {
         </div>`;
       }).join('')}
       <div><button class="btn" data-a="addchk">☑ 新增檢查清單</button></div>
-      <div class="m-sec"><h4>💬 留言與紀錄</h4>
-        <div class="m-add"><textarea class="m-ta small" id="newComment" placeholder="新增一則紀錄…">${esc(draft)}</textarea>
-          <button class="btn primary" data-a="addcomment">送出</button></div>
-        <div class="comments">${[...c.comments].sort((a, b) => b.date.localeCompare(a.date)).map(m => `
-          <div class="comment"><div class="when"><span>${fmtTime(m.date)}</span>
-            <button class="link-btn" data-a="delcomment" data-id="${m.id}">刪除</button></div>
-            <div>${md(m.text)}</div></div>`).join('')}</div>
-      </div>
+      <div class="m-sec"><h4>🎨 封面顏色</h4><div class="cover-pick">${['', ...Object.keys(TRELLO_COLORS)].map(k =>
+        `<button class="sw ${(c.cover || '') === k ? 'on' : ''}" data-a="cover" data-c="${k}" title="${k || '無'}" style="background:${k ? TRELLO_COLORS[k] : 'var(--panel-2)'}">${k ? '' : '✕'}</button>`).join('')}</div></div>
       <div class="m-row m-foot">
         <button class="btn" data-a="archive">${c.archived ? '還原卡片' : '封存卡片'}</button>
         <button class="btn danger" data-a="delete">刪除卡片</button>
@@ -1358,11 +1347,6 @@ $('cardModal').addEventListener('click', e => {
   if (!el || !c) return;
   const a = el.dataset.a, chk = id => c.checklists.find(k => k.id === id);
   if (a === 'close') closeCard();
-  else if (a === 'label') {
-    const id = el.dataset.id;
-    c.labelIds = c.labelIds.includes(id) ? c.labelIds.filter(x => x !== id) : [...c.labelIds, id];
-    cardChanged();
-  }
   else if (a === 'cover') { c.cover = el.dataset.c || null; cardChanged(); }
   else if (a === 'editdesc') { editingDesc = true; renderModal(true); }
   else if (a === 'canceldesc') { editingDesc = false; renderModal(true); }
@@ -1371,14 +1355,6 @@ $('cardModal').addEventListener('click', e => {
   else if (a === 'delitem') { const k = chk(el.dataset.k); k.items = k.items.filter(x => x.id !== el.dataset.id); cardChanged(); }
   else if (a === 'delchk') { if (confirm('刪除這個檢查清單？')) { c.checklists = c.checklists.filter(k => k.id !== el.dataset.k); cardChanged(); } }
   else if (a === 'addchk') { c.checklists.push({ id: uid(), name: '待辦清單', items: [] }); cardChanged(); }
-  else if (a === 'addcomment') {
-    const v = $('newComment').value.trim();
-    if (!v) return;
-    c.comments.push({ id: uid(), date: new Date().toISOString(), text: v });
-    $('newComment').value = '';
-    cardChanged();
-  }
-  else if (a === 'delcomment') { if (confirm('刪除這則紀錄？')) { c.comments = c.comments.filter(m => m.id !== el.dataset.id); cardChanged(); } }
   else if (a === 'archive') { c.archived = !c.archived; cardChanged(); }
   else if (a === 'delete') {
     if (!confirm(`刪除卡片「${c.title}」？`)) return;
