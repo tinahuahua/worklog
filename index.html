@@ -603,12 +603,15 @@ function normalize(s) {
   }
   return s;
 }
+// Each account keeps its own copy in this browser (KEY.u.<user id>); KEY alone is the
+// signed-out, this-browser-only copy. Accounts never see or upload each other's data.
+let localKey = KEY;
 function load() {
-  try { return normalize(JSON.parse(localStorage.getItem(KEY))); } catch (e) {}
+  try { return normalize(JSON.parse(localStorage.getItem(localKey))); } catch (e) {}
   return normalize(null);
 }
 function writeLocal() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  try { localStorage.setItem(localKey, JSON.stringify(state)); } catch (e) {}
 }
 function save() {
   writeLocal();
@@ -1088,7 +1091,7 @@ $('menu').onclick = e => {
     try { localStorage.setItem(KEY + '.theme', root.dataset.theme); } catch (e) {}
   } else if (act === 'auth') {
     if (cloud.user) {
-      if (confirm('確定要登出嗎？這台裝置上的紀錄會保留。')) cloud.db.auth.signOut();
+      if (confirm('確定要登出嗎？登出後畫面不會再顯示這個帳號的紀錄，資料仍安全保存在雲端，重新登入就會回來。')) cloud.db.auth.signOut();
     } else showAuth();
   }
 };
@@ -1593,6 +1596,17 @@ function setAuthMode(up) {
 }
 async function onSignedIn(user) {
   cloud.user = user;
+  const userKey = `${KEY}.u.${user.id}`;
+  try {
+    // one-time move: before per-account copies, an account that had synced here kept its data under KEY
+    if (!localStorage.getItem(userKey) && localStorage.getItem(snapKey()) && localStorage.getItem(KEY)) {
+      localStorage.setItem(userKey, localStorage.getItem(KEY));
+      localStorage.removeItem(KEY);
+    }
+  } catch (e) {}
+  localKey = userKey;
+  state = load();
+  render();
   try { cloud.snap = JSON.parse(localStorage.getItem(snapKey())) || {}; } catch (e) { cloud.snap = {}; }
   $('auth').hidden = true;
   $('menuAuth').textContent = `登出（${user.email}）`;
@@ -1601,6 +1615,12 @@ async function onSignedIn(user) {
 function onSignedOut() {
   cloud.user = null;
   cloud.snap = {};
+  clearTimeout(cloud.timer);
+  // stop showing the account's records; back to this browser's signed-out copy
+  localKey = KEY;
+  state = load();
+  closeCard();
+  render();
   $('menuAuth').textContent = '登入同步';
   setSync('login');
 }
