@@ -305,6 +305,23 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .m-sec h4 { margin: 0 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .m-sec h4 .muted { color: var(--muted); font-weight: 500; font-size: 13px; }
 .cover-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+.ur-form { display: flex; gap: 8px; }
+.ur-form input {
+  flex: 1; min-width: 0; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--bg); color: inherit; font: inherit; font-size: 14px; outline: none;
+}
+.ur-form input:focus { border-color: var(--accent); }
+.ur-form .btn { flex: none; white-space: nowrap; }
+.ur-view {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg);
+  border-radius: 10px; font-size: 14px;
+}
+.ur-view a { flex: 1; min-width: 0; color: var(--accent-strong); font-weight: 700; word-break: break-all; }
+.ur-badge {
+  font-size: 12px; font-weight: 700; color: var(--accent-strong); background: var(--accent-soft);
+  border-radius: 6px; padding: 0 6px; text-decoration: none;
+}
+.ur-badge:hover { text-decoration: underline; }
 .sw { width: 32px; height: 22px; border-radius: 6px; border: 2px solid transparent; font-size: 11px; color: var(--muted); }
 .sw.on { border-color: var(--text); }
 .desc-view {
@@ -902,7 +919,7 @@ function renderSearch() {
   if (!q || !searchOpen) return;
   const hits = [];
   Object.values(state.board.cards).forEach(c => {
-    if (((c.title || '') + '\n' + (c.desc || '')).toLowerCase().includes(q)) {
+    if (((c.title || '') + '\n' + (c.desc || '') + '\n' + (c.ur || '')).toLowerCase().includes(q)) {
       const list = state.board.lists.find(l => l.id === c.listId);
       hits.push({ card: c.id, label: list ? list.name : '', text: '🗂 ' + c.title, done: c.archived });
     }
@@ -1099,6 +1116,19 @@ function md(s) {
   h = h.replace(/:ok:/g, '✅').replace(/^- /gm, '• ');
   return h.replace(/\n/g, '<br>');
 }
+// UR link: keep only http(s) links; show the Jira key (e.g. I4-20881) when there is one
+function cleanUrl(s) {
+  s = s.trim();
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  try { const u = new URL(s); return /^https?:$/.test(u.protocol) ? u.href : ''; } catch (e) { return ''; }
+}
+function urLabel(url) {
+  const m = url.match(/\/browse\/([A-Z][A-Z0-9]*-\d+)/i);
+  if (m) return m[1];
+  try { const u = new URL(url); return u.hostname + (u.pathname.length > 1 ? u.pathname : ''); } catch (e) { return url; }
+}
+let editingUr = false;
 const fmtTime = iso => { const d = new Date(iso); return `${keyOf(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 function renderBoard() {
@@ -1178,12 +1208,13 @@ function cardEl(c) {
       ${labels.length ? `<div class="labels">${labels.map(x => `<span class="lbl" style="background:${colorOf(x.color)}">${esc(x.name)}</span>`).join('')}</div>` : ''}
       <div class="title">${esc(c.title)}</div>
       <div class="badges">${[
+        c.ur ? `<a class="ur-badge" href="${esc(c.ur)}" target="_blank" rel="noopener" title="開啟 UR：${esc(c.ur)}">🔗 ${esc(urLabel(c.ur))}</a>` : '',
         c.desc ? '<span title="有描述">📝</span>' : '',
         items.length ? `<span class="${done === items.length ? 'done' : ''}" title="檢查清單">☑ ${done}/${items.length}</span>` : '',
         c.archived ? '<span>已封存</span>' : '',
       ].join('')}</div>
     </div>`;
-  d.onclick = () => openCard(c.id);
+  d.onclick = e => { if (!e.target.closest('a')) openCard(c.id); };
   d.addEventListener('dragstart', e => {
     dragCard = c.id;
     d.classList.add('dragging');
@@ -1289,7 +1320,7 @@ function deleteList(l) {
 }
 
 // ---------- card detail ----------
-function openCard(id) { openId = id; editingDesc = false; $('cardModal').hidden = false; renderModal(true); }
+function openCard(id) { openId = id; editingDesc = false; editingUr = false; $('cardModal').hidden = false; renderModal(true); }
 function closeCard() { openId = null; $('cardModal').hidden = true; }
 
 function renderModal(force) {
@@ -1308,6 +1339,13 @@ function renderModal(force) {
           <select data-a="list">${sortedLists().map(l => `<option value="${l.id}" ${l.id === c.listId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
           ${c.archived ? '<span class="arch-tag">已封存</span>' : ''}
         </div>
+      </div>
+      <div class="m-sec"><h4>🔗 UR 連結</h4>
+        ${editingUr || !c.ur
+          ? `<form class="ur-form"><input id="urInput" type="url" placeholder="貼上這本 UR 的連結，例如 https://jira.ctbcbank.com/browse/I4-20881" value="${esc(c.ur || '')}">
+               <button class="btn primary">儲存</button>${c.ur ? '<button type="button" class="btn" data-a="cancelur">取消</button>' : ''}</form>`
+          : `<div class="ur-view"><a href="${esc(c.ur)}" target="_blank" rel="noopener" title="${esc(c.ur)}">${esc(urLabel(c.ur))}</a>
+               <button class="link-btn" data-a="editur">修改</button><button class="link-btn" data-a="delur">移除</button></div>`}
       </div>
       <div class="m-sec"><h4>📝 描述 ${editingDesc ? '' : '<button class="link-btn" data-a="editdesc">編輯</button>'}</h4>
         ${editingDesc
@@ -1336,6 +1374,7 @@ function renderModal(force) {
       </div>
     </div>`;
   if (editingDesc) $('descInput').focus();
+  else if (editingUr) $('urInput').focus();
 }
 
 function cardChanged() { save(); renderBoard(); renderModal(true); }
@@ -1348,6 +1387,9 @@ $('cardModal').addEventListener('click', e => {
   const a = el.dataset.a, chk = id => c.checklists.find(k => k.id === id);
   if (a === 'close') closeCard();
   else if (a === 'cover') { c.cover = el.dataset.c || null; cardChanged(); }
+  else if (a === 'editur') { editingUr = true; renderModal(true); }
+  else if (a === 'cancelur') { editingUr = false; renderModal(true); }
+  else if (a === 'delur') { if (confirm('移除這個 UR 連結？')) { delete c.ur; cardChanged(); } }
   else if (a === 'editdesc') { editingDesc = true; renderModal(true); }
   else if (a === 'canceldesc') { editingDesc = false; renderModal(true); }
   else if (a === 'savedesc') { c.desc = $('descInput').value; editingDesc = false; cardChanged(); }
@@ -1376,7 +1418,16 @@ $('cardModal').addEventListener('submit', e => {
   e.preventDefault();
   const c = openId && state.board.cards[openId];
   const input = e.target.querySelector('input'), v = input.value.trim();
-  if (!c || !v) return;
+  if (!c) return;
+  if (e.target.classList.contains('ur-form')) {
+    const url = cleanUrl(v);
+    if (v && !url) { alert('這看起來不是有效的網址，請確認後再貼一次。'); return; }
+    if (url) c.ur = url; else delete c.ur;
+    editingUr = false;
+    cardChanged();
+    return;
+  }
+  if (!v) return;
   c.checklists.find(k => k.id === e.target.dataset.k).items.push({ id: uid(), text: v, done: false });
   cardChanged();
   const again = $('mbox').querySelector(`form[data-k="${e.target.dataset.k}"] input`);
