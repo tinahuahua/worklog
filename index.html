@@ -69,8 +69,14 @@ header.top h1 {
   font-size: 24px; margin: 0; font-weight: 700; letter-spacing: .02em;
 }
 header.top .spacer { flex: 1; }
-.search-wrap { position: relative; width: 300px; max-width: 100%; }
-.search { position: relative; display: block; }
+.search-wrap { position: relative; width: 400px; max-width: 100%; display: flex; gap: 6px; align-items: center; }
+.search { position: relative; display: block; flex: 1; min-width: 0; }
+.filter-pill {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px;
+  font-size: 13px; color: var(--muted); white-space: nowrap; flex: none;
+}
+.filter-pill:hover { color: var(--text); }
+.filter-pill.on { background: var(--accent-strong); border-color: transparent; color: #fff; font-weight: 700; }
 .search-pop {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 12; width: min(460px, calc(100vw - 32px));
   max-height: 65vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,.25);
@@ -263,6 +269,10 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .kcard:hover { border-color: var(--accent); }
 .kcard.dragging { opacity: .4; }
 .kcard.archived { opacity: .5; }
+.kcard.is-ongoing { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent-strong); }
+.ongoing { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; }
+.ongoing input { accent-color: var(--accent-strong); width: 14px; height: 14px; margin: 0; cursor: pointer; }
+.kcard.is-ongoing .ongoing, .m-row .ongoing.on { color: var(--accent-strong); font-weight: 700; }
 .kcard .cover { height: 24px; }
 .kcard .body { padding: 8px 10px; }
 .kcard .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
@@ -448,6 +458,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="search" type="search" placeholder="搜尋所有紀錄（如單號）" autocomplete="off">
     </label>
+      <button class="filter-pill" id="ongoingFilter" title="只看正在進行的 FSD">Ongoing</button>
       <div class="card section search-pop" id="searchSection" hidden>
         <h3 id="searchTitle">搜尋結果</h3>
         <ul class="mini-list" id="searchList"></ul>
@@ -537,6 +548,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
       <h2>🗂 FSD 看板</h2>
       <span class="sub" id="boardStat"></span>
       <div class="spacer"></div>
+      <label><input type="checkbox" id="boardOngoing"> <span id="ongoingLabel">只顯示 Ongoing</span></label>
       <label><input type="checkbox" id="showArchived"> <span id="archLabel">顯示封存</span></label>
     </div>
     <div class="board" id="board"></div>
@@ -912,27 +924,29 @@ function renderBacklog() {
   });
 }
 
-let searchOpen = false;
+let searchOpen = false, onlyOngoing = false;
 function renderSearch() {
   const q = $('search').value.trim().toLowerCase();
-  $('searchSection').hidden = !q || !searchOpen;
-  if (!q || !searchOpen) return;
+  // the Ongoing filter alone (no text) lists every ongoing FSD
+  const active = searchOpen && (q || onlyOngoing);
+  $('searchSection').hidden = !active;
+  if (!active) return;
   const hits = [];
-  Object.values(state.board.cards).forEach(c => {
-    if (((c.title || '') + '\n' + (c.desc || '') + '\n' + (c.ur || '')).toLowerCase().includes(q)) {
-      const list = state.board.lists.find(l => l.id === c.listId);
-      hits.push({ card: c.id, label: list ? list.name : '', text: '🗂 ' + c.title, done: c.archived });
-    }
-  });
-  Object.keys(state.days).sort().reverse().forEach(k => {
+  sortedLists().forEach(l => cardsOf(l.id, true).forEach(c => {
+    if (onlyOngoing && (!c.ongoing || c.archived)) return;
+    if (!q || ((c.title || '') + '\n' + (c.desc || '') + '\n' + (c.ur || '')).toLowerCase().includes(q))
+      hits.push({ card: c.id, label: l.name, text: '🗂 ' + c.title, done: c.archived });
+  }));
+  if (!onlyOngoing) Object.keys(state.days).sort().reverse().forEach(k => {
     const day = state.days[k];
     if (day.note && day.note.toLowerCase().includes(q)) hits.push({ k, text: '📌 ' + day.note });
     (day.events || []).forEach(e => { if ((e.text || '').toLowerCase().includes(q)) hits.push({ k, text: `${evOf(e).icon} ${e.text}`, done: e.done }); });
     (day.tasks || []).forEach(t => { if ((t.text || '').toLowerCase().includes(q)) hits.push({ k, text: t.text, done: t.done }); });
   });
   const ul = $('searchList');
-  $('searchTitle').textContent = hits.length ? `搜尋結果（${hits.length}）` : '搜尋結果';
-  ul.innerHTML = hits.length ? '' : '<li class="empty">找不到符合的紀錄</li>';
+  const title = onlyOngoing ? 'Ongoing FSD' : '搜尋結果';
+  $('searchTitle').textContent = hits.length ? `${title}（${hits.length}）` : title;
+  ul.innerHTML = hits.length ? '' : `<li class="empty">${onlyOngoing ? '沒有符合的 Ongoing FSD' : '找不到符合的紀錄'}</li>`;
   hits.forEach(h => {
     const li = document.createElement('li');
     li.className = 'mini-item';
@@ -951,6 +965,7 @@ function renderSearch() {
 
 function esc(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function highlight(text, q) {
+  if (!q) return esc(text);
   const i = text.toLowerCase().indexOf(q);
   if (i < 0) return esc(text);
   return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
@@ -1097,12 +1112,19 @@ const TRELLO_COLORS = {
   blue: '#579dff', sky: '#6cc3e0', lime: '#94c748', pink: '#e774bb', black: '#8590a2',
 };
 const colorOf = c => TRELLO_COLORS[c] || '#8590a2';
-let showArchived = false, dragCard = null, openId = null, editingDesc = false;
+let showArchived = false, boardOngoing = false, dragCard = null, openId = null, editingDesc = false;
 
 const sortedLists = () => [...state.board.lists].sort((a, b) => a.pos - b.pos);
-const cardsOf = listId => Object.values(state.board.cards)
-  .filter(c => c.listId === listId && (showArchived || !c.archived))
+// `all` ignores the board's view filters (archived / ongoing-only)
+const cardsOf = (listId, all) => Object.values(state.board.cards)
+  .filter(c => c.listId === listId && (all || ((showArchived || !c.archived) && (!boardOngoing || c.ongoing))))
   .sort((a, b) => a.pos - b.pos);
+function toggleOngoing(id, on) {
+  const c = state.board.cards[id]; if (!c) return;
+  c.ongoing = on;
+  save(); renderBoard(); renderSearch();
+  if (openId === id) renderModal(true);
+}
 
 // Trello-style markdown (links, bold, strike, italics, :ok:) → safe HTML
 function md(s) {
@@ -1142,7 +1164,9 @@ function renderBoard() {
   el.appendChild(add);
   el.scrollLeft = scroll;
   const all = Object.values(state.board.cards), arch = all.filter(c => c.archived).length;
-  $('boardStat').textContent = `${all.length - arch} 張卡片`;
+  const ongoing = all.filter(c => c.ongoing && !c.archived).length;
+  $('boardStat').textContent = `${all.length - arch} 張卡片 · ${ongoing} 張 Ongoing`;
+  $('ongoingLabel').textContent = `只顯示 Ongoing (${ongoing})`;
   $('archLabel').textContent = `顯示封存 (${arch})`;
 }
 
@@ -1197,7 +1221,7 @@ function colEl(l) {
 
 function cardEl(c) {
   const d = document.createElement('div');
-  d.className = 'kcard' + (c.archived ? ' archived' : '');
+  d.className = 'kcard' + (c.archived ? ' archived' : '') + (c.ongoing ? ' is-ongoing' : '');
   d.draggable = true;
   d.dataset.id = c.id;
   const labels = c.labelIds.map(id => state.board.labels.find(x => x.id === id)).filter(Boolean);
@@ -1208,13 +1232,15 @@ function cardEl(c) {
       ${labels.length ? `<div class="labels">${labels.map(x => `<span class="lbl" style="background:${colorOf(x.color)}">${esc(x.name)}</span>`).join('')}</div>` : ''}
       <div class="title">${esc(c.title)}</div>
       <div class="badges">${[
+        `<label class="ongoing" title="正在進行"><input type="checkbox" ${c.ongoing ? 'checked' : ''}>Ongoing</label>`,
         c.ur ? `<a class="ur-badge" href="${esc(c.ur)}" target="_blank" rel="noopener" title="開啟 UR：${esc(c.ur)}">🔗 ${esc(urLabel(c.ur))}</a>` : '',
         c.desc ? '<span title="有描述">📝</span>' : '',
         items.length ? `<span class="${done === items.length ? 'done' : ''}" title="檢查清單">☑ ${done}/${items.length}</span>` : '',
         c.archived ? '<span>已封存</span>' : '',
       ].join('')}</div>
     </div>`;
-  d.onclick = e => { if (!e.target.closest('a')) openCard(c.id); };
+  d.onclick = e => { if (!e.target.closest('a, .ongoing')) openCard(c.id); };
+  d.querySelector('.ongoing input').onchange = e => toggleOngoing(c.id, e.target.checked);
   d.addEventListener('dragstart', e => {
     dragCard = c.id;
     d.classList.add('dragging');
@@ -1337,6 +1363,7 @@ function renderModal(force) {
         <input class="m-title" data-a="title" value="${esc(c.title)}">
         <div class="m-row">在欄位
           <select data-a="list">${sortedLists().map(l => `<option value="${l.id}" ${l.id === c.listId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
+          <label class="ongoing ${c.ongoing ? 'on' : ''}"><input type="checkbox" data-a="ongoing" ${c.ongoing ? 'checked' : ''}>Ongoing（正在進行）</label>
           ${c.archived ? '<span class="arch-tag">已封存</span>' : ''}
         </div>
       </div>
@@ -1386,6 +1413,7 @@ $('cardModal').addEventListener('click', e => {
   if (!el || !c) return;
   const a = el.dataset.a, chk = id => c.checklists.find(k => k.id === id);
   if (a === 'close') closeCard();
+  else if (a === 'ongoing') toggleOngoing(c.id, el.checked);
   else if (a === 'cover') { c.cover = el.dataset.c || null; cardChanged(); }
   else if (a === 'editur') { editingUr = true; renderModal(true); }
   else if (a === 'cancelur') { editingUr = false; renderModal(true); }
@@ -1434,6 +1462,13 @@ $('cardModal').addEventListener('submit', e => {
   if (again) again.focus();
 });
 $('showArchived').onchange = e => { showArchived = e.target.checked; renderBoard(); };
+$('boardOngoing').onchange = e => { boardOngoing = e.target.checked; renderBoard(); };
+$('ongoingFilter').onclick = () => {
+  onlyOngoing = !onlyOngoing;
+  $('ongoingFilter').classList.toggle('on', onlyOngoing);
+  searchOpen = true;
+  renderSearch();
+};
 
 // drag the board's empty space with the mouse to scroll left/right (cards keep their own drag)
 (function panBoard() {
