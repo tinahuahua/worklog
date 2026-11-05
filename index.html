@@ -474,6 +474,7 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
         <button data-act="export">匯出備份 (JSON)</button>
         <button data-act="import">匯入備份</button>
         <button data-act="theme">切換深色 / 淺色</button>
+        <button data-act="password" id="menuPw" hidden>修改密碼</button>
         <button data-act="auth" id="menuAuth" hidden>登入同步</button>
       </div>
       <input type="file" id="fileInput" accept="application/json,.json" hidden>
@@ -566,7 +567,20 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
     <div class="auth-err" id="authErr"></div>
     <button class="btn primary" type="submit" id="authSubmit">登入</button>
     <button type="button" class="link-btn" id="authMode">第一次使用？建立帳號</button>
+    <button type="button" class="link-btn" id="authForgot">忘記密碼？</button>
     <button type="button" class="link-btn" id="authSkip">先不登入，只存在這個瀏覽器</button>
+  </form>
+</div>
+
+<div class="auth" id="pwDialog" hidden>
+  <form class="card auth-box" id="pwForm">
+    <h2>設定新密碼</h2>
+    <p id="pwHint">請輸入新的密碼（至少 6 碼）。</p>
+    <input type="password" id="pwNew" required minlength="6" placeholder="新密碼" autocomplete="new-password">
+    <input type="password" id="pwConfirm" required minlength="6" placeholder="再輸入一次新密碼" autocomplete="new-password">
+    <div class="auth-err" id="pwErr"></div>
+    <button class="btn primary" type="submit" id="pwSubmit">更新密碼</button>
+    <button type="button" class="link-btn" id="pwCancel">取消</button>
   </form>
 </div>
 
@@ -1089,6 +1103,8 @@ $('menu').onclick = e => {
     const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     root.dataset.theme = dark ? 'light' : 'dark';
     try { localStorage.setItem(KEY + '.theme', root.dataset.theme); } catch (e) {}
+  } else if (act === 'password') {
+    showPw();
   } else if (act === 'auth') {
     if (cloud.user) {
       if (confirm('確定要登出嗎？登出後畫面不會再顯示這個帳號的紀錄，資料仍安全保存在雲端，重新登入就會回來。')) cloud.db.auth.signOut();
@@ -1524,8 +1540,13 @@ function setSync(s) {
 }
 
 async function pull() {
+  // Without a valid login the database answers with an empty list rather than an error,
+  // which would look like "everything was deleted elsewhere". Never act on that.
+  const { data: { session } } = await cloud.db.auth.getSession();
+  if (!session) throw new Error('no valid session');
   const { data, error } = await cloud.db.from(TABLE).select('day,data');
   if (error) throw error;
+  if (!data.length && Object.keys(cloud.snap).length) throw new Error('cloud returned nothing; keeping local data');
   const remote = {};
   data.forEach(r => { remote[r.day] = JSON.stringify(r.data); });
   const rows = rowsOf();
@@ -1610,6 +1631,8 @@ async function onSignedIn(user) {
   try { cloud.snap = JSON.parse(localStorage.getItem(snapKey())) || {}; } catch (e) { cloud.snap = {}; }
   $('auth').hidden = true;
   $('menuAuth').textContent = `登出（${user.email}）`;
+  $('menuPw').hidden = false;
+  if (cloud.recovering) { cloud.recovering = false; showPw('你是從重設密碼的信回來的，請設定新的密碼。'); }
   await syncNow(true);
 }
 function onSignedOut() {
@@ -1622,15 +1645,23 @@ function onSignedOut() {
   closeCard();
   render();
   $('menuAuth').textContent = '登入同步';
+  $('menuPw').hidden = true;
+  $('pwDialog').hidden = true;
   setSync('login');
 }
 
 async function initCloud() {
   if (!SUPABASE_URL || !SUPABASE_KEY || !window.supabase) return;
+  // arriving from a password-reset email: the link signs you in, then asks for a new password
+  cloud.recovering = /type=recovery/.test(location.hash);
   cloud.db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   $('menuAuth').hidden = false;
   cloud.db.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') onSignedOut();
+    if (event === 'PASSWORD_RECOVERY') {
+      if (cloud.user) showPw('你是從重設密碼的信回來的，請設定新的密碼。');
+      else cloud.recovering = true;
+    }
   });
   const { data: { session } } = await cloud.db.auth.getSession();
   if (session) onSignedIn(session.user);
@@ -1639,6 +1670,45 @@ async function initCloud() {
 
 $('authMode').onclick = () => { setAuthMode(!signingUp); $('authErr').textContent = ''; };
 $('authSkip').onclick = () => { $('auth').hidden = true; };
+
+// ---------- password ----------
+function showPw(hint) {
+  $('pwErr').textContent = '';
+  $('pwHint').textContent = hint || '請輸入新的密碼（至少 6 碼）。';
+  $('pwNew').value = $('pwConfirm').value = '';
+  $('auth').hidden = true;
+  $('pwDialog').hidden = false;
+  $('pwNew').focus();
+}
+$('pwCancel').onclick = () => { $('pwDialog').hidden = true; };
+$('pwForm').onsubmit = async e => {
+  e.preventDefault();
+  const err = $('pwErr');
+  err.textContent = '';
+  if ($('pwNew').value !== $('pwConfirm').value) { err.textContent = '兩次輸入的密碼不一樣'; return; }
+  $('pwSubmit').disabled = true;
+  try {
+    const { error } = await cloud.db.auth.updateUser({ password: $('pwNew').value });
+    if (error) throw error;
+    $('pwDialog').hidden = true;
+    history.replaceState(null, '', location.pathname);   // drop the reset-link token from the address bar
+    showToast('密碼已更新，下次登入請用新密碼');
+  } catch (ex) {
+    err.textContent = /different from the old/i.test(ex.message) ? '新密碼不能和舊密碼一樣' :
+      /session/i.test(ex.message) ? '登入已過期，請重新登入後再修改密碼' : ex.message;
+  } finally {
+    $('pwSubmit').disabled = false;
+  }
+};
+$('authForgot').onclick = async () => {
+  const err = $('authErr'), email = $('authEmail').value.trim();
+  if (!email) { err.className = 'auth-err'; err.textContent = '請先在上方輸入你的 Email，再按「忘記密碼？」'; $('authEmail').focus(); return; }
+  $('authForgot').disabled = true;
+  const { error } = await cloud.db.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  $('authForgot').disabled = false;
+  err.className = error ? 'auth-err' : 'auth-err info';
+  err.textContent = error ? error.message : '重設密碼的信已寄出。請到信箱點信裡的連結，回到網站後就能設定新密碼。';
+};
 $('syncBtn').onclick = () => { if (!cloud.user) showAuth(); else syncNow(true); };
 $('authForm').onsubmit = async e => {
   e.preventDefault();
