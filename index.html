@@ -345,6 +345,14 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .log .lw { flex: none; font-size: 12px; border-radius: 999px; padding: 1px 8px; background: var(--accent-soft); color: var(--accent-strong); white-space: nowrap; }
 .log .lw.late { background: var(--accent-strong); color: #fff; font-weight: 700; }
 .log .lw.future { background: transparent; color: var(--muted); }
+.log .lw.span { background: var(--panel-2); color: var(--text); }
+.log .le { flex: none; font-size: 13px; color: var(--accent-strong); white-space: nowrap; cursor: pointer; }
+.log .le:hover { text-decoration: underline; }
+.le-edit { display: flex; gap: 6px; align-items: center; flex: none; }
+.le-edit input, .log-edit .end-field {
+  padding: 3px 8px; border-radius: 8px; border: 1px solid var(--accent); background: var(--panel);
+  color: inherit; font: inherit; font-size: 13px; outline: none;
+}
 .log .icon-btn { width: 24px; height: 24px; opacity: 0; flex: none; }
 .log:hover .icon-btn { opacity: 1; }
 @media (hover: none) { .log .icon-btn { opacity: 1; } }
@@ -1197,7 +1205,7 @@ function urLabel(url) {
   if (m) return m[1];
   try { const u = new URL(url); return u.hostname + (u.pathname.length > 1 ? u.pathname : ''); } catch (e) { return url; }
 }
-let editingUr = false, editingLog = null;
+let editingUr = false, editingLog = null, editingEnd = null;
 
 // ---------- workdays ----------
 // Taiwan national holidays that fall on weekdays (incl. 補假), per 行政院人事行政總處.
@@ -1228,6 +1236,11 @@ const logsOf = c => [...(c.logs || [])].sort((a, b) => a.date.localeCompare(b.da
 const hasCheck = l => l.check !== false;
 // only open checkbox entries count workdays; plain notes and finished ones show nothing
 function logAge(l) {
+  // an optional completion date always shows the workdays in between
+  if (l.end) {
+    const n = workdaysBetween(l.date, l.end);
+    return n < 0 ? { text: '完成日期早於開始日期', cls: 'future' } : { text: `經過 ${n} 個工作天`, cls: 'span' };
+  }
   if (!hasCheck(l) || l.done) return null;
   const n = workdaysBetween(l.date, todayKey());
   if (n < 0) return { text: `還有 ${-n} 個工作天`, cls: 'future' };
@@ -1303,7 +1316,7 @@ function colEl(l) {
 
 // board card: how long the oldest unfinished progress entry has been waiting
 function waitBadge(c) {
-  const open = (c.logs || []).filter(l => hasCheck(l) && !l.done && l.date <= todayKey());
+  const open = (c.logs || []).filter(l => hasCheck(l) && !l.done && !l.end && l.date <= todayKey());
   if (!open.length) return '';
   const n = Math.max(...open.map(l => workdaysBetween(l.date, todayKey())));
   return `<span class="wait ${n >= 5 ? 'late' : ''}" title="最久的未完成進度已過 ${n} 個工作天">⏳ ${n} 天</span>`;
@@ -1435,7 +1448,7 @@ function deleteList(l) {
 }
 
 // ---------- card detail ----------
-function openCard(id) { openId = id; editingDesc = false; editingUr = false; editingLog = null; $('cardModal').hidden = false; renderModal(true); }
+function openCard(id) { openId = id; editingDesc = false; editingUr = false; editingLog = null; editingEnd = null; $('cardModal').hidden = false; renderModal(true); }
 function closeCard() { openId = null; $('cardModal').hidden = true; }
 
 function renderModal(force) {
@@ -1465,14 +1478,22 @@ function renderModal(force) {
       </div>
       <div class="m-sec"><h4>📋 進度紀錄 <span class="muted">工作天已排除週末、國定假日與颱風假</span></h4>
         <div class="logs">${logsOf(c).map(l => editingLog === l.id
-          ? `<form class="log-edit" data-id="${l.id}"><input type="date" value="${l.date}" required>
-               <input class="lt-in" value="${esc(l.text)}" required><button class="btn primary">儲存</button>
+          ? `<form class="log-edit" data-id="${l.id}"><input type="date" value="${l.date}" required title="開始日期">
+               <input class="lt-in" value="${esc(l.text)}" required>
+               <label class="chk-opt">完成日期<input type="date" class="end-field" value="${l.end || ''}"></label>
+               <button class="btn primary">儲存</button>
                <button type="button" class="btn" data-a="cancellog">取消</button></form>`
           : (() => { const age = logAge(l); return `<div class="log">
                ${hasCheck(l) ? `<input type="checkbox" data-a="logdone" data-id="${l.id}" ${l.done ? 'checked' : ''} title="完成">` : '<span class="nochk"></span>'}
                <span class="ld">${shortLabel(l.date)}</span>
                <span class="lt" data-a="editlog" data-id="${l.id}" title="點一下修改">${md(l.text)}</span>
+               ${editingEnd === l.id
+                 ? `<span class="le-edit"><input type="date" class="end-in" data-id="${l.id}" value="${l.end || ''}" title="完成日期">
+                      ${l.end ? `<button class="link-btn" data-a="clearend" data-id="${l.id}">清除</button>` : ''}
+                      <button class="link-btn" data-a="cancelend">取消</button></span>`
+                 : l.end ? `<span class="le" data-a="setend" data-id="${l.id}" title="點一下修改完成日期">→ ${shortLabel(l.end)}</span>` : ''}
                ${age ? `<span class="lw ${age.cls}">${age.text}</span>` : ''}
+               ${l.end || editingEnd === l.id ? '' : `<button class="icon-btn" data-a="setend" data-id="${l.id}" title="填寫完成日期">📅</button>`}
                <button class="icon-btn" data-a="togglecheck" data-id="${l.id}" title="${hasCheck(l) ? '移除勾選框' : '加上勾選框'}">${hasCheck(l) ? '⊟' : '☐'}</button>
                <button class="icon-btn" data-a="dellog" data-id="${l.id}" title="刪除">✕</button></div>`; })()).join('')}</div>
         <form class="log-add"><input type="date" id="logDate" value="${todayKey()}" required>
@@ -1528,6 +1549,13 @@ $('cardModal').addEventListener('click', e => {
     if (l.done) l.doneDate = todayKey(); else delete l.doneDate;
     cardChanged();
   }
+  else if (a === 'setend') { editingEnd = el.dataset.id; renderModal(true); }
+  else if (a === 'cancelend') { editingEnd = null; renderModal(true); }
+  else if (a === 'clearend') {
+    delete c.logs.find(x => x.id === el.dataset.id).end;
+    editingEnd = null;
+    cardChanged();
+  }
   else if (a === 'togglecheck') {
     const l = c.logs.find(x => x.id === el.dataset.id);
     if (hasCheck(l)) { l.check = false; l.done = false; delete l.doneDate; } else l.check = true;
@@ -1563,6 +1591,11 @@ $('cardModal').addEventListener('change', e => {
   if (!c) return;
   if (e.target.dataset.a === 'title') { const v = e.target.value.trim(); if (v) { c.title = v; save(); renderBoard(); } }
   if (e.target.dataset.a === 'list') moveCard(c.id, e.target.value, cardsOf(e.target.value).length);
+  if (e.target.classList.contains('end-in') && e.target.value) {
+    c.logs.find(x => x.id === e.target.dataset.id).end = e.target.value;
+    editingEnd = null;
+    cardChanged();
+  }
 });
 $('cardModal').addEventListener('keydown', e => {
   if (e.target.dataset.a === 'title' && e.key === 'Enter' && !e.isComposing) e.target.blur();
@@ -1584,8 +1617,9 @@ $('cardModal').addEventListener('submit', e => {
   }
   if (e.target.classList.contains('log-edit')) {
     const l = c.logs.find(x => x.id === e.target.dataset.id);
-    const [dateIn, textIn] = e.target.querySelectorAll('input');
+    const [dateIn, textIn, endIn] = e.target.querySelectorAll('input');
     if (dateIn.value && textIn.value.trim()) { l.date = dateIn.value; l.text = textIn.value.trim(); }
+    if (endIn.value) l.end = endIn.value; else delete l.end;
     editingLog = null;
     cardChanged();
     return;
