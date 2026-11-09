@@ -1224,8 +1224,9 @@ function workdaysBetween(from, to) {
 const logsOf = c => [...(c.logs || [])].sort((a, b) => a.date.localeCompare(b.date));
 function logAge(l) {
   if (l.done) {
-    const n = workdaysBetween(l.date, l.doneDate || l.date);
-    return { text: `完成・花了 ${n} 個工作天`, cls: 'done' };
+    // entries converted from old descriptions have no recorded completion day
+    if (!l.doneDate) return { text: '完成', cls: 'done' };
+    return { text: `完成・花了 ${workdaysBetween(l.date, l.doneDate)} 個工作天`, cls: 'done' };
   }
   const n = workdaysBetween(l.date, todayKey());
   if (n < 0) return { text: `還有 ${-n} 個工作天`, cls: 'future' };
