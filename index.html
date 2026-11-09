@@ -332,6 +332,32 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
   border-radius: 6px; padding: 0 6px; text-decoration: none;
 }
 .ur-badge:hover { text-decoration: underline; }
+.logs { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.log {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-size: 14px;
+}
+.log input[type=checkbox] { accent-color: var(--accent-strong); width: 16px; height: 16px; margin: 0; flex: none; cursor: pointer; }
+.log .ld { flex: none; width: 74px; color: var(--muted); font-size: 13px; }
+.log .lt { flex: 1; min-width: 0; word-break: break-word; cursor: text; }
+.log.done .lt { text-decoration: line-through; color: var(--muted); }
+.log .lw { flex: none; font-size: 12px; border-radius: 999px; padding: 1px 8px; background: var(--accent-soft); color: var(--accent-strong); white-space: nowrap; }
+.log .lw.late { background: var(--accent-strong); color: #fff; font-weight: 700; }
+.log .lw.done, .log .lw.future { background: transparent; color: var(--muted); }
+.log .icon-btn { width: 24px; height: 24px; opacity: 0; flex: none; }
+.log:hover .icon-btn { opacity: 1; }
+@media (hover: none) { .log .icon-btn { opacity: 1; } }
+.log-add, .log-edit { display: flex; gap: 8px; flex-wrap: wrap; }
+.log-edit { padding: 6px; border-radius: 10px; background: var(--bg); }
+.log-add input, .log-edit input {
+  padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg);
+  color: inherit; font: inherit; font-size: 14px; outline: none;
+}
+.log-add input:focus, .log-edit input:focus { border-color: var(--accent); }
+.log-add .lt-in, .log-edit .lt-in { flex: 1 1 200px; min-width: 0; }
+.log-add .btn, .log-edit .btn { flex: none; white-space: nowrap; }
+.kcard .wait { color: var(--accent-strong); }
+.kcard .wait.late { font-weight: 700; }
+@media (max-width: 640px) { .log { flex-wrap: wrap; } .log .lt { flex-basis: calc(100% - 120px); } }
 .sw { width: 32px; height: 22px; border-radius: 6px; border: 2px solid transparent; font-size: 11px; color: var(--muted); }
 .sw.on { border-color: var(--text); }
 .desc-view {
@@ -951,7 +977,7 @@ function renderSearch() {
   const hits = [];
   sortedLists().forEach(l => cardsOf(l.id, true).forEach(c => {
     if (onlyOngoing && (!c.ongoing || c.archived)) return;
-    if (!q || ((c.title || '') + '\n' + (c.desc || '') + '\n' + (c.ur || '')).toLowerCase().includes(q))
+    if (!q || [c.title, c.desc, c.ur, ...(c.logs || []).map(l => l.text)].join('\n').toLowerCase().includes(q))
       hits.push({ card: c.id, label: l.name, text: '🗂 ' + c.title, done: c.archived });
   }));
   if (!onlyOngoing) Object.keys(state.days).sort().reverse().forEach(k => {
@@ -1169,7 +1195,42 @@ function urLabel(url) {
   if (m) return m[1];
   try { const u = new URL(url); return u.hostname + (u.pathname.length > 1 ? u.pathname : ''); } catch (e) { return url; }
 }
-let editingUr = false;
+let editingUr = false, editingLog = null;
+
+// ---------- workdays ----------
+// Taiwan national holidays that fall on weekdays (incl. 補假), per 行政院人事行政總處.
+// 2027 is estimated from the holiday rules — check it once the official calendar is out.
+const TW_HOLIDAYS = new Set([
+  '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19', '2026-02-20',
+  '2026-02-27', '2026-04-03', '2026-04-06', '2026-05-01', '2026-06-19', '2026-09-25',
+  '2026-09-28', '2026-10-09', '2026-10-26', '2026-12-25',
+  '2027-01-01', '2027-02-04', '2027-02-05', '2027-02-08', '2027-02-09', '2027-02-10',
+  '2027-03-01', '2027-04-05', '2027-04-06', '2027-04-30', '2027-06-09', '2027-09-15',
+  '2027-09-28', '2027-10-11', '2027-10-25', '2027-12-24',
+]);
+// weekends, national holidays and days noted as 颱風假 / 停班 don't count
+function isWorkday(k) {
+  const dow = parseKey(k).getDay();
+  if (dow === 0 || dow === 6 || TW_HOLIDAYS.has(k)) return false;
+  return !/颱風假|停班/.test((state.days[k] && state.days[k].note) || '');
+}
+// workdays after `from` up to and including `to` (negative when `to` is earlier)
+function workdaysBetween(from, to) {
+  if (from > to) return -workdaysBetween(to, from);
+  let n = 0;
+  for (let k = addDays(from, 1); k <= to; k = addDays(k, 1)) if (isWorkday(k)) n++;
+  return n;
+}
+const logsOf = c => [...(c.logs || [])].sort((a, b) => a.date.localeCompare(b.date));
+function logAge(l) {
+  if (l.done) {
+    const n = workdaysBetween(l.date, l.doneDate || l.date);
+    return { text: `完成・花了 ${n} 個工作天`, cls: 'done' };
+  }
+  const n = workdaysBetween(l.date, todayKey());
+  if (n < 0) return { text: `還有 ${-n} 個工作天`, cls: 'future' };
+  return { text: n === 0 ? '今天' : `已過 ${n} 個工作天`, cls: n >= 5 ? 'late' : '' };
+}
 const fmtTime = iso => { const d = new Date(iso); return `${keyOf(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 function renderBoard() {
@@ -1238,6 +1299,14 @@ function colEl(l) {
   return col;
 }
 
+// board card: how long the oldest unfinished progress entry has been waiting
+function waitBadge(c) {
+  const open = (c.logs || []).filter(l => !l.done && l.date <= todayKey());
+  if (!open.length) return '';
+  const n = Math.max(...open.map(l => workdaysBetween(l.date, todayKey())));
+  return `<span class="wait ${n >= 5 ? 'late' : ''}" title="最久的未完成進度已過 ${n} 個工作天">⏳ ${n} 天</span>`;
+}
+
 function cardEl(c) {
   const d = document.createElement('div');
   d.className = 'kcard' + (c.archived ? ' archived' : '') + (c.ongoing ? ' is-ongoing' : '');
@@ -1254,6 +1323,7 @@ function cardEl(c) {
         c.ur ? `<a class="ur-badge" href="${esc(c.ur)}" target="_blank" rel="noopener" title="開啟 UR：${esc(c.ur)}">🔗 ${esc(urLabel(c.ur))}</a>` : '',
         c.desc ? '<span title="有描述">📝</span>' : '',
         items.length ? `<span class="${done === items.length ? 'done' : ''}" title="檢查清單">☑ ${done}/${items.length}</span>` : '',
+        waitBadge(c),
         c.archived ? '<span>已封存</span>' : '',
       ].join('')}</div>
     </div>`;
@@ -1363,7 +1433,7 @@ function deleteList(l) {
 }
 
 // ---------- card detail ----------
-function openCard(id) { openId = id; editingDesc = false; editingUr = false; $('cardModal').hidden = false; renderModal(true); }
+function openCard(id) { openId = id; editingDesc = false; editingUr = false; editingLog = null; $('cardModal').hidden = false; renderModal(true); }
 function closeCard() { openId = null; $('cardModal').hidden = true; }
 
 function renderModal(force) {
@@ -1390,6 +1460,20 @@ function renderModal(force) {
                <button class="btn primary">儲存</button>${c.ur ? '<button type="button" class="btn" data-a="cancelur">取消</button>' : ''}</form>`
           : `<div class="ur-view"><a href="${esc(c.ur)}" target="_blank" rel="noopener" title="${esc(c.ur)}">${esc(urLabel(c.ur))}</a>
                <button class="link-btn" data-a="editur">修改</button><button class="link-btn" data-a="delur">移除</button></div>`}
+      </div>
+      <div class="m-sec"><h4>📋 進度紀錄 <span class="muted">工作天已排除週末、國定假日與颱風假</span></h4>
+        <div class="logs">${logsOf(c).map(l => editingLog === l.id
+          ? `<form class="log-edit" data-id="${l.id}"><input type="date" value="${l.date}" required>
+               <input class="lt-in" value="${esc(l.text)}" required><button class="btn primary">儲存</button>
+               <button type="button" class="btn" data-a="cancellog">取消</button></form>`
+          : (() => { const age = logAge(l); return `<div class="log ${l.done ? 'done' : ''}">
+               <input type="checkbox" data-a="logdone" data-id="${l.id}" ${l.done ? 'checked' : ''} title="完成">
+               <span class="ld">${shortLabel(l.date)}</span>
+               <span class="lt" data-a="editlog" data-id="${l.id}" title="點一下修改">${md(l.text)}</span>
+               <span class="lw ${age.cls}">${age.text}</span>
+               <button class="icon-btn" data-a="dellog" data-id="${l.id}" title="刪除">✕</button></div>`; })()).join('')}</div>
+        <form class="log-add"><input type="date" id="logDate" value="${todayKey()}" required>
+          <input class="lt-in" id="logText" placeholder="新增一筆，例如：寄信 SME Review"><button class="btn primary">新增</button></form>
       </div>
       <div class="m-sec"><h4>📝 描述 ${editingDesc ? '' : '<button class="link-btn" data-a="editdesc">編輯</button>'}</h4>
         ${editingDesc
@@ -1433,6 +1517,20 @@ $('cardModal').addEventListener('click', e => {
   else if (a === 'ongoing') toggleOngoing(c.id, el.checked);
   else if (a === 'cover') { c.cover = el.dataset.c || null; cardChanged(); }
   else if (a === 'editur') { editingUr = true; renderModal(true); }
+  else if (a === 'logdone') {
+    const l = c.logs.find(x => x.id === el.dataset.id);
+    l.done = el.checked;
+    if (l.done) l.doneDate = todayKey(); else delete l.doneDate;
+    cardChanged();
+  }
+  else if (a === 'editlog') { editingLog = el.dataset.id; renderModal(true); }
+  else if (a === 'cancellog') { editingLog = null; renderModal(true); }
+  else if (a === 'dellog') {
+    const i = c.logs.findIndex(x => x.id === el.dataset.id), l = c.logs[i];
+    c.logs.splice(i, 1);
+    cardChanged();
+    showToast('已刪除一筆進度', () => { c.logs.splice(i, 0, l); cardChanged(); });
+  }
   else if (a === 'cancelur') { editingUr = false; renderModal(true); }
   else if (a === 'delur') { if (confirm('移除這個 UR 連結？')) { delete c.ur; cardChanged(); } }
   else if (a === 'editdesc') { editingDesc = true; renderModal(true); }
@@ -1464,6 +1562,22 @@ $('cardModal').addEventListener('submit', e => {
   const c = openId && state.board.cards[openId];
   const input = e.target.querySelector('input'), v = input.value.trim();
   if (!c) return;
+  if (e.target.classList.contains('log-add')) {
+    const text = $('logText').value.trim(), date = $('logDate').value;
+    if (!text || !date) { $('logText').focus(); return; }
+    (c.logs = c.logs || []).push({ id: uid(), date, text, done: false });
+    cardChanged();
+    $('logText').focus();
+    return;
+  }
+  if (e.target.classList.contains('log-edit')) {
+    const l = c.logs.find(x => x.id === e.target.dataset.id);
+    const [dateIn, textIn] = e.target.querySelectorAll('input');
+    if (dateIn.value && textIn.value.trim()) { l.date = dateIn.value; l.text = textIn.value.trim(); }
+    editingLog = null;
+    cardChanged();
+    return;
+  }
   if (e.target.classList.contains('ur-form')) {
     const url = cleanUrl(v);
     if (v && !url) { alert('這看起來不是有效的網址，請確認後再貼一次。'); return; }
