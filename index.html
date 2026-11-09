@@ -339,10 +339,12 @@ kbd { font-family: inherit; font-size: 11px; border: 1px solid var(--line); bord
 .log input[type=checkbox] { accent-color: var(--accent-strong); width: 16px; height: 16px; margin: 0; flex: none; cursor: pointer; }
 .log .ld { flex: none; width: 74px; color: var(--muted); font-size: 13px; }
 .log .lt { flex: 1; min-width: 0; word-break: break-word; cursor: text; }
-.log.done .lt { text-decoration: line-through; color: var(--muted); }
+.log .nochk { width: 16px; flex: none; }
+.chk-opt { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); cursor: pointer; flex: none; }
+.chk-opt input { accent-color: var(--accent-strong); margin: 0; }
 .log .lw { flex: none; font-size: 12px; border-radius: 999px; padding: 1px 8px; background: var(--accent-soft); color: var(--accent-strong); white-space: nowrap; }
 .log .lw.late { background: var(--accent-strong); color: #fff; font-weight: 700; }
-.log .lw.done, .log .lw.future { background: transparent; color: var(--muted); }
+.log .lw.future { background: transparent; color: var(--muted); }
 .log .icon-btn { width: 24px; height: 24px; opacity: 0; flex: none; }
 .log:hover .icon-btn { opacity: 1; }
 @media (hover: none) { .log .icon-btn { opacity: 1; } }
@@ -1222,12 +1224,11 @@ function workdaysBetween(from, to) {
   return n;
 }
 const logsOf = c => [...(c.logs || [])].sort((a, b) => a.date.localeCompare(b.date));
+// an entry has a checkbox unless it was made as a plain note (check: false)
+const hasCheck = l => l.check !== false;
+// only open checkbox entries count workdays; plain notes and finished ones show nothing
 function logAge(l) {
-  if (l.done) {
-    // entries converted from old descriptions have no recorded completion day
-    if (!l.doneDate) return { text: '完成', cls: 'done' };
-    return { text: `完成・花了 ${workdaysBetween(l.date, l.doneDate)} 個工作天`, cls: 'done' };
-  }
+  if (!hasCheck(l) || l.done) return null;
   const n = workdaysBetween(l.date, todayKey());
   if (n < 0) return { text: `還有 ${-n} 個工作天`, cls: 'future' };
   return { text: n === 0 ? '今天' : `已過 ${n} 個工作天`, cls: n >= 5 ? 'late' : '' };
@@ -1302,7 +1303,7 @@ function colEl(l) {
 
 // board card: how long the oldest unfinished progress entry has been waiting
 function waitBadge(c) {
-  const open = (c.logs || []).filter(l => !l.done && l.date <= todayKey());
+  const open = (c.logs || []).filter(l => hasCheck(l) && !l.done && l.date <= todayKey());
   if (!open.length) return '';
   const n = Math.max(...open.map(l => workdaysBetween(l.date, todayKey())));
   return `<span class="wait ${n >= 5 ? 'late' : ''}" title="最久的未完成進度已過 ${n} 個工作天">⏳ ${n} 天</span>`;
@@ -1467,14 +1468,17 @@ function renderModal(force) {
           ? `<form class="log-edit" data-id="${l.id}"><input type="date" value="${l.date}" required>
                <input class="lt-in" value="${esc(l.text)}" required><button class="btn primary">儲存</button>
                <button type="button" class="btn" data-a="cancellog">取消</button></form>`
-          : (() => { const age = logAge(l); return `<div class="log ${l.done ? 'done' : ''}">
-               <input type="checkbox" data-a="logdone" data-id="${l.id}" ${l.done ? 'checked' : ''} title="完成">
+          : (() => { const age = logAge(l); return `<div class="log">
+               ${hasCheck(l) ? `<input type="checkbox" data-a="logdone" data-id="${l.id}" ${l.done ? 'checked' : ''} title="完成">` : '<span class="nochk"></span>'}
                <span class="ld">${shortLabel(l.date)}</span>
                <span class="lt" data-a="editlog" data-id="${l.id}" title="點一下修改">${md(l.text)}</span>
-               <span class="lw ${age.cls}">${age.text}</span>
+               ${age ? `<span class="lw ${age.cls}">${age.text}</span>` : ''}
+               <button class="icon-btn" data-a="togglecheck" data-id="${l.id}" title="${hasCheck(l) ? '移除勾選框' : '加上勾選框'}">${hasCheck(l) ? '⊟' : '☐'}</button>
                <button class="icon-btn" data-a="dellog" data-id="${l.id}" title="刪除">✕</button></div>`; })()).join('')}</div>
         <form class="log-add"><input type="date" id="logDate" value="${todayKey()}" required>
-          <input class="lt-in" id="logText" placeholder="新增一筆，例如：寄信 SME Review"><button class="btn primary">新增</button></form>
+          <input class="lt-in" id="logText" placeholder="新增一筆，例如：寄信 SME Review">
+          <label class="chk-opt" title="勾選框的項目會計算已過幾個工作天"><input type="checkbox" id="logCheck">加勾選框</label>
+          <button class="btn primary">新增</button></form>
       </div>
       <div class="m-sec"><h4>📝 描述 ${editingDesc ? '' : '<button class="link-btn" data-a="editdesc">編輯</button>'}</h4>
         ${editingDesc
@@ -1524,6 +1528,11 @@ $('cardModal').addEventListener('click', e => {
     if (l.done) l.doneDate = todayKey(); else delete l.doneDate;
     cardChanged();
   }
+  else if (a === 'togglecheck') {
+    const l = c.logs.find(x => x.id === el.dataset.id);
+    if (hasCheck(l)) { l.check = false; l.done = false; delete l.doneDate; } else l.check = true;
+    cardChanged();
+  }
   else if (a === 'editlog') { editingLog = el.dataset.id; renderModal(true); }
   else if (a === 'cancellog') { editingLog = null; renderModal(true); }
   else if (a === 'dellog') {
@@ -1566,8 +1575,10 @@ $('cardModal').addEventListener('submit', e => {
   if (e.target.classList.contains('log-add')) {
     const text = $('logText').value.trim(), date = $('logDate').value;
     if (!text || !date) { $('logText').focus(); return; }
-    (c.logs = c.logs || []).push({ id: uid(), date, text, done: false });
+    const check = $('logCheck').checked;
+    (c.logs = c.logs || []).push({ id: uid(), date, text, done: false, check });
     cardChanged();
+    $('logCheck').checked = check;   // keep the choice for the next entry
     $('logText').focus();
     return;
   }
